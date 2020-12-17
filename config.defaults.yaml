@@ -1,0 +1,24 @@
+kowalski:
+  protocol: "https"
+  host: "kowalski.caltech.edu"
+  port: 443
+  username:
+  password:
+
+nersc:
+  protocol: "https"
+  host: "portal.nersc.gov"
+  path_data:
+  username:
+  password:
+
+ztf_depo:
+  url: "https://ztfweb.ipac.caltech.edu/ztf/depot/"
+  username:
+  password:
+
+irsa:
+  url: "https://irsa.ipac.caltech.edu/ibe/data/ztf/products/"
+  url_login: "https://irsa.ipac.caltech.edu/account/signon/login.do"
+  username:
+  password:
