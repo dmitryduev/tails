@@ -16,13 +16,10 @@ from astropy.coordinates import SkyCoord
 from astropy.io import fits
 import astropy.units as u
 from astropy.visualization import (
-    # MinMaxInterval,
-    AsymmetricPercentileInterval,
-    # ZScaleInterval,
-    # AsinhStretch,
+    # AsymmetricPercentileInterval,
+    ZScaleInterval,
     LinearStretch,
     LogStretch,
-    # SqrtStretch,
     ImageNormalize,
 )
 from astroquery.imcce import Skybot
@@ -318,23 +315,17 @@ def plot_stack(stack, reticles=None, zscale=True, save=False, **kwargs):
             img, stretch=LinearStretch() if i == n_i - 1 else LogStretch()
         )
         img_norm = norm(img)
-        normalizer = AsymmetricPercentileInterval(
-            lower_percentile=1, upper_percentile=100
+        # normalizer = AsymmetricPercentileInterval(
+        #     lower_percentile=1, upper_percentile=100
+        # )
+        normalizer = ZScaleInterval(
+            nsamples=stack.shape[0] * stack.shape[1],
+            contrast=kwargs.get("contrast", 0.2),
+            krej=kwargs.get("krej", 2.5),
         )
         vmin, vmax = normalizer.get_limits(img_norm)
         ax.imshow(img_norm, cmap=cmap, origin=origin, vmin=vmin, vmax=vmax)
 
-        # if zscale:
-        #     interval = ZScaleInterval()
-        #     limits = interval.get_limits(stack[..., i])
-        #     ax.imshow(stack[..., i], origin=origin, cmap=cmap, vmin=limits[0], vmax=limits[1])
-        # else:
-        #     im = deepcopy(stack[..., i])
-        #     if kwargs.get('normalize', False) and np.linalg.norm(im) != 0:
-        #         im /= np.linalg.norm(im)
-        #     if np.min(im) > 0:
-        #         im = im - np.min(im) + 1e-3
-        #     ax.imshow(im, origin=origin, cmap=cmap, norm=LogNorm())
         if titles is not None:
             ax.title.set_text(titles[i])
         if reticles is not None:

@@ -190,11 +190,14 @@ class Dvoika(object):
         self.path_sci = path_sci
 
         if download:
-            ursa_login = (
-                f"{secrets['irsa']['url_login']}?josso_cmd=login"
-                f"&josso_username={secrets['irsa']['username']}&josso_password={secrets['irsa']['password']}"
-            )
-            cookies = requests.get(ursa_login).cookies
+            if secrets["irsa"]["username"] not in (None, "anonymous"):
+                ursa_login = (
+                    f"{secrets['irsa']['url_login']}?josso_cmd=login"
+                    f"&josso_username={secrets['irsa']['username']}&josso_password={secrets['irsa']['password']}"
+                )
+                cookies = requests.get(ursa_login).cookies
+            else:
+                cookies = None
 
             path_ursa_sci = os.path.join(
                 secrets["irsa"]["url"], "sci", y, p1, p2, sci_name
@@ -252,60 +255,38 @@ class Dvoika(object):
         path_ref.mkdir(parents=True, exist_ok=True)
 
         if download:
-            url_nersc = f"{secrets['nersc']['protocol']}://{secrets['nersc']['host']}{secrets['nersc']['path_data']}"
-
-            path_nersc_ref = os.path.join(url_nersc, path_rel)
-            path_nersc_ref_file = os.path.join(
-                path_nersc_ref, f"ref.{field}_{ccd}_{quad}_{filt}.fits"
-            )
-            # path_nersc_mask_file = os.path.join(
-            #     path_nersc_ref, f"ref.{field}_{ccd}_{quad}_{filt}.mask.fits"
-            # )
             if verbose:
-                print(path_nersc_ref_file)
-
-            # for pn, pl in zip((path_nersc_ref_file, path_nersc_mask_file), (path_ref_file, path_mask_file)):
-            for pn, pl in zip((path_nersc_ref_file,), (path_ref_file,)):
-                if verbose:
-                    print(f"fetching {pathlib.Path(pn).stem}")
-                if not os.path.exists(pl):
-                    r = requests.get(
-                        pn,
-                        allow_redirects=True,
-                        auth=requests.auth.HTTPBasicAuth(
-                            secrets["nersc"]["username"], secrets["nersc"]["password"]
-                        ),
+                print(f"fetching {pathlib.Path(path_ref_file).stem}")
+            if not os.path.exists(path_ref_file):
+                # get IPAC's/Frank's regular reference instead:
+                if secrets["irsa"]["username"] not in (None, "anonymous"):
+                    ursa_login = (
+                        f"{secrets['irsa']['url_login']}?josso_cmd=login"
+                        f"&josso_username={secrets['irsa']['username']}&josso_password={secrets['irsa']['password']}"
                     )
-                    # assert r.status_code == 200, 'download failed'
-                    # failed? get IPAC's/Frank's regular reference instead:
-                    if r.status_code != 200:
-                        ursa_login = (
-                            f"{secrets['irsa']['url_login']}?josso_cmd=login"
-                            f"&josso_username={secrets['irsa']['username']}&josso_password={secrets['irsa']['password']}"
-                        )
-                        cookies = requests.get(ursa_login).cookies
+                    cookies = requests.get(ursa_login).cookies
+                else:
+                    cookies = None
 
-                        path_ursa_ref = os.path.join(
-                            secrets["irsa"]["url"],
-                            "ref",
-                            field[:3],
-                            f"field{field}",
-                            filt,
-                            f"ccd{ccd[1:]}",
-                            quad,
-                            f"ztf_{field}_{filt}_{ccd}_{quad}_refimg.fits",
-                        )
-                        if verbose:
-                            print("Danny's reference not available, fetching from IPAC")
-                            print(path_ursa_ref)
-                        r = requests.get(
-                            path_ursa_ref, allow_redirects=True, cookies=cookies
-                        )
-                        if r.status_code != 200:
-                            raise Exception(f"download failed: {path_ursa_ref}")
+                path_ursa_ref = os.path.join(
+                    secrets["irsa"]["url"],
+                    "ref",
+                    field[:3],
+                    f"field{field}",
+                    filt,
+                    f"ccd{ccd[1:]}",
+                    quad,
+                    f"ztf_{field}_{filt}_{ccd}_{quad}_refimg.fits",
+                )
+                if verbose:
+                    print("Danny's reference not available, fetching from IPAC")
+                    print(path_ursa_ref)
+                r = requests.get(path_ursa_ref, allow_redirects=True, cookies=cookies)
+                if r.status_code != 200:
+                    raise Exception(f"download failed: {path_ursa_ref}")
 
-                    with open(pl, "wb") as f:
-                        f.write(r.content)
+                with open(path_ref_file, "wb") as f:
+                    f.write(r.content)
 
         if not self.fetch_data_only:
             with fits.open(str(path_ref_file)) as hdulist:
