@@ -1,12 +1,86 @@
 kowalski:
-  protocol: "https"
-  host: "kowalski.caltech.edu"
+  protocol: https
+  host: kowalski.caltech.edu
   port: 443
-  username:
-  password:
+  token:
 
 irsa:
-  url: "https://irsa.ipac.caltech.edu/ibe/data/ztf/products/"
-  url_login: "https://irsa.ipac.caltech.edu/account/signon/login.do"
+  url: https://irsa.ipac.caltech.edu/ibe/data/ztf/products/
+  url_login: https://irsa.ipac.caltech.edu/account/signon/login.do
   username: anonymous
   password: anonymous
+
+# production-service-specific configuration
+
+database:
+  max_pool_size: 200
+  host: "tails_mongo_1"
+  port: 27017
+  db: "tails"
+  collection: tails
+  admin_username: "mongoadmin"
+  admin_password: "mongoadminsecret"
+  username: "tails"
+  password: "MilesTailsPrower"
+
+fritz:
+  protocol: https
+  host: fritz.science
+  port: 443
+  token:
+  group_id:
+  filter_id:
+
+dask:
+  host: 127.0.0.1
+  scheduler_port: 8786
+  n_workers: 4
+  threads_per_worker: 1
+  # see dask.distributed.Worker for the description
+  lifetime:
+  lifetime_stagger:
+  lifetime_restart:
+
+# this is used to make supervisord_<service>.conf files at build time
+supervisord:
+  watcher:
+    unix_http_server:
+      file: /dev/shm/supervisor.sock
+
+    supervisord:
+      logfile: /data/logs/supervisord.log
+      logfile_maxbytes: 50MB
+      logfile_backups: 30
+      loglevel: info
+      pidfile: /tmp/supervisord.pid
+      nodaemon: True
+      minfds: 1024
+      minprocs: 200
+
+    "rpcinterface:supervisor":
+      "supervisor.rpcinterface_factory": supervisor.rpcinterface:make_main_rpcinterface
+
+    supervisorctl:
+      serverurl: unix:///dev/shm/supervisor.sock
+
+    "program:dask-cluster":
+      command: /opt/conda/bin/python dask_cluster.py
+      directory: /app
+      user: root
+      autostart: true
+      autorestart: true
+      stdout_logfile: /data/logs/dask_cluster.log
+      stdout_logfile_maxbytes: 50MB
+      redirect_stderr: True
+      environment: "PRODUCTION=1"
+
+    "program:watcher":
+      command: /opt/conda/bin/python watcher.py
+      directory: /app
+      user: root
+      autostart: true
+      autorestart: true
+      stdout_logfile: /data/logs/watcher.log
+      stdout_logfile_maxbytes: 30MB
+      redirect_stderr: True
+      environment: "PRODUCTION=1"
