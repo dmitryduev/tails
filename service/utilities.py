@@ -1,12 +1,23 @@
-__all__ = ["init_db", "Mongo"]
+__all__ = ["init_db", "Mongo", "timer"]
 
 
 import base64
 import bcrypt
+from contextlib import contextmanager
 import pymongo
 from pymongo.errors import BulkWriteError
 from tails.utils import log
+import time
 import traceback
+
+
+@contextmanager
+def timer(task_description, verbose: bool = True):
+    tic = time.time()
+    yield
+    toc = time.time()
+    if verbose:
+        log(f"{task_description} took {toc-tic} s")
 
 
 def generate_password_hash(password, salt_rounds=12):
