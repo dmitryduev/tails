@@ -10,77 +10,86 @@ irsa:
   username: anonymous
   password: anonymous
 
-# production-service-specific configuration
+# watchdog-service-specific configuration
 
-database:
-  max_pool_size: 200
-  host: "tails_mongo_1"
-  port: 27017
-  db: "tails"
-  collection: tails
-  admin_username: "mongoadmin"
-  admin_password: "mongoadminsecret"
-  username: "tails"
-  password: "MilesTailsPrower"
+watchdog:
+  app:
+    post_to_fritz: true
+    checkpoint: tails-20200824
+    score_threshold: 0.7
+    box_size_pix: 256
+    cleanup: sci  # <ref|sci|all|none>
+    path: /data
 
-fritz:
-  protocol: https
-  host: fritz.science
-  port: 443
-  token:
-  group_id:
-  filter_id:
+  database:
+    max_pool_size: 200
+    host: "tails_mongo_1"
+    port: 27017
+    db: "tails"
+    collection: tails
+    admin_username: "mongoadmin"
+    admin_password: "mongoadminsecret"
+    username: "tails"
+    password: "MilesTailsPrower"
 
-dask:
-  host: 127.0.0.1
-  scheduler_port: 8786
-  n_workers: 4
-  threads_per_worker: 1
-  # see dask.distributed.Worker for the description
-  lifetime:
-  lifetime_stagger:
-  lifetime_restart:
+  fritz:
+    protocol: https
+    host: fritz.science
+    port: 443
+    token:
+    group_id:
+    filter_id:
 
-# this is used to make supervisord_<service>.conf files at build time
-supervisord:
-  watcher:
-    unix_http_server:
-      file: /dev/shm/supervisor.sock
+  dask:
+    host: 127.0.0.1
+    scheduler_port: 8786
+    n_workers: 4
+    threads_per_worker: 1
+    # see dask.distributed.Worker for the description
+    lifetime:
+    lifetime_stagger:
+    lifetime_restart:
 
-    supervisord:
-      logfile: /data/logs/supervisord.log
-      logfile_maxbytes: 50MB
-      logfile_backups: 30
-      loglevel: info
-      pidfile: /tmp/supervisord.pid
-      nodaemon: True
-      minfds: 1024
-      minprocs: 200
+  # this is used to make supervisord_<service>.conf files at build time
+  supervisord:
+    watcher:
+      unix_http_server:
+        file: /dev/shm/supervisor.sock
 
-    "rpcinterface:supervisor":
-      "supervisor.rpcinterface_factory": supervisor.rpcinterface:make_main_rpcinterface
+      supervisord:
+        logfile: /data/logs/supervisord.log
+        logfile_maxbytes: 50MB
+        logfile_backups: 30
+        loglevel: info
+        pidfile: /tmp/supervisord.pid
+        nodaemon: True
+        minfds: 1024
+        minprocs: 200
 
-    supervisorctl:
-      serverurl: unix:///dev/shm/supervisor.sock
+      "rpcinterface:supervisor":
+        "supervisor.rpcinterface_factory": supervisor.rpcinterface:make_main_rpcinterface
 
-    "program:dask-cluster":
-      command: /opt/conda/bin/python dask_cluster.py
-      directory: /app
-      user: root
-      autostart: true
-      autorestart: true
-      stdout_logfile: /data/logs/dask_cluster.log
-      stdout_logfile_maxbytes: 50MB
-      redirect_stderr: True
-      environment: "PRODUCTION=1"
+      supervisorctl:
+        serverurl: unix:///dev/shm/supervisor.sock
 
-    "program:watcher":
-      command: /opt/conda/bin/python watcher.py
-      directory: /app
-      user: root
-      autostart: true
-      autorestart: true
-      stdout_logfile: /data/logs/watcher.log
-      stdout_logfile_maxbytes: 30MB
-      redirect_stderr: True
-      environment: "PRODUCTION=1"
+      "program:dask-cluster":
+        command: /opt/conda/bin/python dask_cluster.py
+        directory: /app
+        user: root
+        autostart: true
+        autorestart: true
+        stdout_logfile: /data/logs/dask_cluster.log
+        stdout_logfile_maxbytes: 50MB
+        redirect_stderr: True
+        environment: "PRODUCTION=1"
+
+      "program:watcher":
+        command: /opt/conda/bin/python watcher.py
+        directory: /app
+        user: root
+        autostart: true
+        autorestart: true
+        stdout_logfile: /data/logs/watcher.log
+        stdout_logfile_maxbytes: 30MB
+        redirect_stderr: True
+        environment: "PRODUCTION=1"

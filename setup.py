@@ -157,6 +157,7 @@ setup(
         "cycler>=0.10.0",
         "cmasher>=1.5.1",
         "efficientnet>=1.1.0",
+        "gsutil>=4.57",
         "matplotlib>=3.1.3",
         "numpy==1.19.2",
         "pandas>=1.0.4",

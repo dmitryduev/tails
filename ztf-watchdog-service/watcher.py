@@ -1,14 +1,22 @@
 import arrow
+from astropy.coordinates import SkyCoord
 from astropy.time import Time
+from copy import deepcopy
 import dask.distributed
 import fire
+import multiprocessing as mp
+import numpy as np
+import pandas as pd
+import pathlib
 from penquins import Kowalski
 import requests
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
 import time
 
-from tails.utils import log, load_config
+from tails.efficientdet import Tails
+from tails.image import Dvoika, Troika
+from tails.utils import load_config, log, plot_stack, preprocess_stack
 
 from utilities import init_db, Mongo, timer
 
@@ -41,17 +49,19 @@ class TailsWorker:
 
         # mongo connection
         self.mongo = Mongo(
-            host=config["database"]["host"],
-            port=config["database"]["port"],
-            username=config["database"]["username"],
-            password=config["database"]["password"],
-            db=config["database"]["db"],
+            host=config["watchdog"]["database"]["host"],
+            port=config["watchdog"]["database"]["port"],
+            username=config["watchdog"]["database"]["username"],
+            password=config["watchdog"]["database"]["password"],
+            db=config["watchdog"]["database"]["db"],
             verbose=self.verbose,
         )
 
         # session to talk to Fritz
         self.session = requests.Session()
-        self.session_headers = {"Authorization": f"token {config['fritz']['token']}"}
+        self.session_headers = {
+            "Authorization": f"token {config['watchdog']['fritz']['token']}"
+        }
 
         retries = Retry(
             total=5,
@@ -76,7 +86,30 @@ class TailsWorker:
             log(e)
 
         # todo: preload Tails
-        self.model = None
+        self.path = pathlib.Path(config["watchdog"]["app"]["path"])
+
+        self.checkpoint = pathlib.Path(
+            f"/app/models/{config['watchdog']['app']['checkpoint']}/tails"
+        )
+
+        self.model = Tails()
+        self.model.load_weights(self.checkpoint).expect_partial()
+
+        self.score_threshold = float(
+            config["watchdog"]["app"].get("score_threshold", 0.5)
+        )
+        if not (0 <= self.score_threshold <= 1):
+            raise ValueError(
+                "watchdog.app.score_threshold must be (0 <= score_threshold <=1), check config"
+            )
+
+        self.cleanup = config["watchdog"]["app"]["cleanup"]
+        if self.cleanup not in ("all", "none", "ref", "sci"):
+            raise ValueError(
+                "watchdog.app.cleanup value not in ('all', 'none', 'ref', 'sci'), check config"
+            )
+
+        self.num_threads = mp.cpu_count()
 
     def api_fritz(self, method: str, endpoint: str, data=None):
         """Make an API call to a SkyPortal instance
@@ -103,16 +136,16 @@ class TailsWorker:
 
         if method == "get":
             response = methods[method](
-                f"{config['fritz']['protocol']}://"
-                f"{config['fritz']['host']}:{config['fritz']['port']}"
+                f"{config['watchdog']['fritz']['protocol']}://"
+                f"{config['watchdog']['fritz']['host']}:{config['watchdog']['fritz']['port']}"
                 f"{endpoint}",
                 params=data,
                 headers=self.session_headers,
             )
         else:
             response = methods[method](
-                f"{config['fritz']['protocol']}://"
-                f"{config['fritz']['host']}:{config['fritz']['port']}"
+                f"{config['watchdog']['fritz']['protocol']}://"
+                f"{config['watchdog']['fritz']['host']}:{config['watchdog']['fritz']['port']}"
                 f"{endpoint}",
                 json=data,
                 headers=self.session_headers,
@@ -121,7 +154,151 @@ class TailsWorker:
         return response
 
     def process_frame(self, frame):
-        pass
+        path_base = self.path.resolve()
+
+        date_string = frame.split("_")[1][:8]
+        path_date = self.path / "runs" / date_string
+
+        if not path_date.exists():
+            path_date.mkdir(parents=True, exist_ok=True)
+
+        try:
+            box_size_pix = config["watchdog"]["app"]["box_size_pix"]
+
+            dim_last = self.model.inputs[0].shape[-1]
+
+            if dim_last == 2:
+                stack_class = Dvoika
+            elif dim_last == 3:
+                stack_class = Troika
+            else:
+                raise ValueError(
+                    "bad dim_last: only know how to operate on duplets and triplets"
+                )
+
+            stack = stack_class(
+                path_base=str(path_base),
+                name=frame,
+                secrets=self.config,
+                verbose=self.verbose,
+            )
+
+            # reproject ref
+            ref_projected = stack.reproject_ref2sci(
+                how="swarp", nthreads=self.num_threads
+            )
+            # tessellate
+            xboxes, yboxes = stack.tessellate_boxes(
+                box_size_pix=box_size_pix, offset=20
+            )
+
+            tessellation = []
+
+            for i, xbox in enumerate(xboxes):
+                for j, ybox in enumerate(yboxes):
+                    # stack and preprocess image stack
+                    if dim_last == 2:
+                        s = np.stack(
+                            [
+                                stack.sci[xbox[0] : xbox[1], ybox[0] : ybox[1]],
+                                ref_projected[xbox[0] : xbox[1], ybox[0] : ybox[1]],
+                            ],
+                            axis=2,
+                        )
+                    elif dim_last == 3:
+                        s = np.stack(
+                            [
+                                stack.sci[xbox[0] : xbox[1], ybox[0] : ybox[1]],
+                                ref_projected[xbox[0] : xbox[1], ybox[0] : ybox[1]],
+                                stack.zogy[xbox[0] : xbox[1], ybox[0] : ybox[1]],
+                            ],
+                            axis=2,
+                        )
+                    else:
+                        raise ValueError(
+                            "bad dim_last: only know how to operate on duplets and triplets"
+                        )
+
+                    s_raw = deepcopy(s)
+                    preprocess_stack(s)
+                    tessellation.append(
+                        {
+                            "i": i,
+                            "j": j,
+                            "xbox": xbox,
+                            "ybox": ybox,
+                            "stack": s,
+                            "stack_raw": s_raw,
+                        }
+                    )
+
+            stacks = np.array([t["stack"] for t in tessellation])
+
+            predictions = self.model.predict(stacks)
+            # log(predictions[0], predictions.shape)
+
+            # detections
+            dets = []
+            ind = np.where(predictions[:, 0].flatten() > self.score_threshold)[0]
+            for ni, ii in enumerate(ind):
+                x_o, y_o = predictions[ii, 1:] * stacks.shape[1]
+                # save png
+                plot_stack(
+                    # tessellation[ii]['stack'],
+                    tessellation[ii]["stack_raw"],
+                    reticles=((x_o, y_o),),
+                    w=6,
+                    h=2,
+                    dpi=360,
+                    save=str(path_date / f"{frame}_{ni}.png"),
+                    # cmap=cmr.arctic,
+                    # cmap=plt.cm.viridis,
+                    # cmap=plt.cm.cividis,
+                    cmap="bone",
+                )
+                # save npy:
+                np.save(str(path_date / f"{frame}_{ni}.npy"), tessellation[ii]["stack"])
+
+                x, y = (
+                    tessellation[ii]["ybox"][0] + x_o,
+                    tessellation[ii]["xbox"][0] + y_o,
+                )
+                ra, dec = stack.pix2world_sci(x, y)
+                c = SkyCoord(ra=ra, dec=dec, unit="deg")
+                radecstr = c.to_string(style="hmsdms")
+                t = Time(stack.header_sci["OBSJD"], format="jd")
+                jd = float(t.jd)
+                dt = t.datetime
+                det = {
+                    "id": frame,
+                    "ni": ni,
+                    "jd": jd,
+                    "datestr": f"{dt.year} {dt.month} {dt.day + (dt.hour + dt.minute / 60.0 + dt.second / 3600.0) / 24}",
+                    "p": float(predictions[ii, 0]),
+                    "x": x,
+                    "y": y,
+                    "ra": ra,
+                    "dec": dec,
+                    "radecstr": radecstr,
+                    "tails_v": self.config["watchdog"]["app"]["checkpoint"],
+                }
+                dets.append(det)
+
+            if len(dets) > 0:
+                # print(dets)
+                df_dets = pd.DataFrame.from_records(dets)
+                df_dets.to_csv(str(path_date / f"{frame}.csv"), index=False)
+
+            if self.cleanup.lower() != "none":
+                cleanup_ref = True if self.cleanup.lower() in ("all", "ref") else False
+                cleanup_sci = True if self.cleanup.lower() in ("all", "sci") else False
+                stack.cleanup(ref=cleanup_ref, sci=cleanup_sci)
+
+            return True
+
+        except Exception as e:
+            print(str(e))
+            return False
 
 
 class WorkerInitializer(dask.distributed.WorkerPlugin):
@@ -139,7 +316,7 @@ def process_frame(frame):
 
     log(f"Processing {frame} on {worker.address}")
 
-    collection = config["database"]["collection"]
+    collection = config["watchdog"]["database"]["collection"]
 
     try:
         tails_worker.mongo.db[collection].update_one(
@@ -147,7 +324,10 @@ def process_frame(frame):
         )
         # todo: process frame, tessellate, run Tails on individual tiles
         tails_worker.process_frame(frame)
+
         # todo: prepare and post results to Fritz, if any
+        if config["watchdog"]["app"]["post_to_fritz"]:
+            pass
         tails_worker.mongo.db[collection].update_one(
             {"_id": frame}, {"$set": {"status": "success"}}
         )
@@ -181,11 +361,11 @@ def watchdog(
     init_db(config=config, verbose=verbose)
 
     mongo = Mongo(
-        host=config["database"]["host"],
-        port=config["database"]["port"],
-        username=config["database"]["username"],
-        password=config["database"]["password"],
-        db=config["database"]["db"],
+        host=config["watchdog"]["database"]["host"],
+        port=config["watchdog"]["database"]["port"],
+        username=config["watchdog"]["database"]["username"],
+        password=config["watchdog"]["database"]["password"],
+        db=config["watchdog"]["database"]["db"],
         verbose=verbose,
     )
     if verbose:
@@ -203,7 +383,7 @@ def watchdog(
     if verbose:
         log(f"Kowalski connection OK: {kowalski.ping()}")
 
-    collection = config["database"]["collection"]
+    collection = config["watchdog"]["database"]["collection"]
 
     # remove dangling entries in the db at startup
     mongo.db[collection].delete_many({"status": "processing"})
@@ -212,7 +392,7 @@ def watchdog(
     if verbose:
         log("Initializing dask.distributed client")
     dask_client = dask.distributed.Client(
-        address=f"{config['dask']['host']}:{config['dask']['scheduler_port']}"
+        address=f"{config['watchdog']['dask']['host']}:{config['watchdog']['dask']['scheduler_port']}"
     )
 
     # init each worker with Worker instance
@@ -266,6 +446,12 @@ def watchdog(
                 for ccd in range(1, 17)
                 for quad in range(1, 5)
             ]
+
+            if verbose:
+                log(f"Found {len(frame_names)} ccd-quad frames")
+
+            # fixme:
+            frame_names = ["ztf_20191014495961_000570_zr_c05"]
 
             if verbose:
                 log(frame_names)
