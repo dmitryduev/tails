@@ -1,4 +1,4 @@
-__all__ = ["init_db", "Mongo", "timer"]
+__all__ = ["init_db", "Mongo", "timer", "uid"]
 
 
 import base64
@@ -6,6 +6,8 @@ import bcrypt
 from contextlib import contextmanager
 import pymongo
 from pymongo.errors import BulkWriteError
+import secrets
+import string
 from tails.utils import log
 import time
 import traceback
@@ -25,6 +27,13 @@ def generate_password_hash(password, salt_rounds=12):
     hashed = bcrypt.hashpw(password_bin, bcrypt.gensalt(salt_rounds))
     encoded = base64.b64encode(hashed)
     return encoded.decode("utf-8")
+
+
+alphabet = string.ascii_lowercase + string.digits
+
+
+def uid(length: int = 6, prefix: str = "", postfix: str = ""):
+    return prefix + "".join(secrets.choice(alphabet) for _ in range(length)) + postfix
 
 
 def init_db(config, verbose=False):
