@@ -256,7 +256,7 @@ def test():
         "docker",
         "exec",
         "-i",
-        "tails_watcher_1",
+        "tails_watchdog_1",
         "python",
         "-m",
         "pytest",
