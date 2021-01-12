@@ -240,7 +240,7 @@ def test():
                 ]
             )
             > 0
-            for container_name in ("tails_watcher_1",)
+            for container_name in ("tails_watchdog_1",)
         )
 
         if not all(containers_up):
