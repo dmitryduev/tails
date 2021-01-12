@@ -163,7 +163,14 @@ def fetch_models():
     if not path_models.exists():
         path_models.mkdir(parents=True, exist_ok=True)
 
-    command = ["gsutil", "-m", "cp", "-r", "gs://ztf-tails/models/*", str(path_models)]
+    command = [
+        "gsutil",
+        "-m",
+        "cp",
+        "-r",
+        "gs://tails-models/models/*",
+        str(path_models),
+    ]
     p = subprocess.run(command, check=True)
     if p.returncode != 0:
         raise RuntimeError("Failed to fetch Tails models")
