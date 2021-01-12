@@ -19,7 +19,7 @@ RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86
     apt-get clean
 
 # copy over the config and the code
-COPY ["config.yaml", "setup.py", "ztf-watchdog-service/", "/app/"]
+COPY ["config.yaml", "setup.py", "ztf-watchdog-service/", "ztf-watchdog-service/tests/", "/app/"]
 COPY ["tails", "/app/tails"]
 COPY ["models", "/app/models"]
 
@@ -35,5 +35,5 @@ RUN /opt/conda/bin/conda install -c conda-forge astromatic-swarp && \
 RUN touch /app/1.txt
 
 # run container
-#CMD /usr/local/bin/supervisord -n -c supervisord_watcher.conf
-CMD tail -f 1.txt
+#CMD tail -f 1.txt
+CMD /usr/local/bin/supervisord -n -c supervisord_watcher.conf

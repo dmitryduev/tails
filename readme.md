@@ -26,9 +26,23 @@ Fetch pre-trained models:
 
 ```bash
 mkdir models
-gsutil cp -r -n gs://dmitryduev/tails/models models/
+gsutil -m cp -r -n gs://ztf-tails/models/* models/
+```
+
+Run Tails on a ZTF frame:
+
+```bash
+cd scripts
+python run_tails.py run \
+  --config=../config.defaults.yaml \
+  --checkpoint=./models/tails-20210107/tails \
+  --score_threshold=0.5 \
+  --cleanup=none \
+  --single_image=ztf_20191014495961_000570_zr_c05_o_q3
 ```
 
 ## ZTF watchdog service
 
-todo:
+```bash
+./watchdog.py run
+```

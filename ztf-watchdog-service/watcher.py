@@ -24,6 +24,7 @@ from penquins import Kowalski
 import requests
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
+import sys
 import time
 
 from tails.efficientdet import Tails
@@ -710,18 +711,6 @@ def watchdog(
     if verbose:
         log("Set up MongoDB connection")
 
-    if verbose:
-        log("Setting up Kowalski connection")
-    kowalski = Kowalski(
-        token=config["kowalski"]["token"],
-        protocol=config["kowalski"]["protocol"],
-        host=config["kowalski"]["host"],
-        port=config["kowalski"]["port"],
-        verbose=True,
-    )
-    if verbose:
-        log(f"Kowalski connection OK: {kowalski.ping()}")
-
     collection = config["watchdog"]["database"]["collection"]
 
     # remove dangling entries in the db at startup
@@ -739,6 +728,29 @@ def watchdog(
         log("Initializing dask.distributed workers")
     worker_initializer = WorkerInitializer()
     dask_client.register_worker_plugin(worker_initializer, name="worker-init")
+
+    if test:
+        frame = ["ztf_20191014495961_000570_zr_c05_o_q3"]
+        with timer(f"Submitting frame {frame} for processing", verbose):
+            future = dask_client.submit(process_frame, frame, pure=True)
+            dask.distributed.fire_and_forget(future)
+            future.release()
+            del future
+
+        time.sleep(60)
+        sys.exit(0)
+
+    if verbose:
+        log("Setting up Kowalski connection")
+    kowalski = Kowalski(
+        token=config["kowalski"]["token"],
+        protocol=config["kowalski"]["protocol"],
+        host=config["kowalski"]["host"],
+        port=config["kowalski"]["port"],
+        verbose=True,
+    )
+    if verbose:
+        log(f"Kowalski connection OK: {kowalski.ping()}")
 
     while True:
         try:
@@ -788,11 +800,6 @@ def watchdog(
 
             if verbose:
                 log(f"Found {len(frame_names)} ccd-quad frames")
-
-            # fixme:
-            frame_names = ["ztf_20191014495961_000570_zr_c05_o_q3"]
-
-            if verbose:
                 log(frame_names)
 
             processed_frames = list(
