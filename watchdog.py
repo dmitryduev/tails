@@ -168,7 +168,7 @@ def fetch_models():
         "-m",
         "cp",
         "-r",
-        "gs://tails-models/models/*",
+        "gs://tails-models/*",
         str(path_models),
     ]
     p = subprocess.run(command, check=True)
