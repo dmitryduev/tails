@@ -730,7 +730,7 @@ def watchdog(
     dask_client.register_worker_plugin(worker_initializer, name="worker-init")
 
     if test:
-        frame = ["ztf_20191014495961_000570_zr_c05_o_q3"]
+        frame = "ztf_20191014495961_000570_zr_c05_o_q3"
         with timer(f"Submitting frame {frame} for processing", verbose):
             future = dask_client.submit(process_frame, frame, pure=True)
             dask.distributed.fire_and_forget(future)
