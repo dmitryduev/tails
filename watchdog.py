@@ -257,7 +257,7 @@ def test():
         "exec",
         "-i",
         "tails_watchdog_1",
-        "python",
+        "/opt/conda/bin/python",
         "-m",
         "pytest",
         "-s",
