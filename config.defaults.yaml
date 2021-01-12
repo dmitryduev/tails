@@ -84,12 +84,12 @@ watchdog:
         environment: "PRODUCTION=1"
 
       "program:watcher":
-        command: /opt/conda/bin/python watcher.py
+        command: /opt/conda/bin/python watcher.py --twilight --verbose
         directory: /app
         user: root
         autostart: true
         autorestart: true
         stdout_logfile: /data/logs/watcher.log
-        stdout_logfile_maxbytes: 30MB
+        stdout_logfile_maxbytes: 50MB
         redirect_stderr: True
         environment: "PRODUCTION=1"

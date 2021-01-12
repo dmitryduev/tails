@@ -26,7 +26,7 @@ Fetch pre-trained models:
 
 ```bash
 mkdir models
-gsutil -m cp -r -n gs://ztf-tails/models/* models/
+gsutil -m cp -r -n gs://tails-models/* models/
 ```
 
 Run Tails on a ZTF frame:
@@ -42,6 +42,14 @@ python run_tails.py run \
 ```
 
 ## ZTF watchdog service
+
+Fetch models from GCP:
+
+```bash
+./watchdog.py fetch-models
+```
+
+Spin up:
 
 ```bash
 ./watchdog.py run
