@@ -24,7 +24,6 @@ from penquins import Kowalski
 import requests
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
-import sys
 import time
 
 from tails.efficientdet import Tails
@@ -67,8 +66,7 @@ class TailsWorker:
             username=config["watchdog"]["database"]["username"],
             password=config["watchdog"]["database"]["password"],
             db=config["watchdog"]["database"]["db"],
-            # verbose=self.verbose,
-            verbose=True,
+            verbose=self.verbose,
         )
 
         # session to talk to Fritz
@@ -704,7 +702,7 @@ def watchdog(
         username=config["watchdog"]["database"]["username"],
         password=config["watchdog"]["database"]["password"],
         db=config["watchdog"]["database"]["db"],
-        verbose=True,
+        verbose=verbose,
     )
     if verbose:
         log("Set up MongoDB connection")
@@ -739,7 +737,7 @@ def watchdog(
             del future
 
         time.sleep(60)
-        sys.exit(0)
+        return True
 
     if verbose:
         log("Setting up Kowalski connection")
@@ -748,7 +746,7 @@ def watchdog(
         protocol=config["kowalski"]["protocol"],
         host=config["kowalski"]["host"],
         port=config["kowalski"]["port"],
-        verbose=True,
+        verbose=verbose,
     )
     if verbose:
         log(f"Kowalski connection OK: {kowalski.ping()}")
