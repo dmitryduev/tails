@@ -11,6 +11,10 @@ with open("/app/config.yaml") as config_yaml:
 
 class TestWatchdog:
     def test_watchdog(self):
+        # execute watchdog on a single file, wait for it to be processed, then exit
+        watchdog(test=True)
+
+        # check that processing succeeded
         frame_name = "ztf_20191014495961_000570_zr_c05_o_q3"
 
         mongo = Mongo(
@@ -25,11 +29,7 @@ class TestWatchdog:
 
         collection = config["watchdog"]["database"]["collection"]
 
-        # execute watchdog on a single file, wait for it to be processed, then exit
-        watchdog(test=True)
-
         num_retries = 10
-        # make sure the containers are up and running
         for i in range(num_retries):
             if i == num_retries - 1:
                 mongo.db[collection].delete_one({"_id": frame_name})

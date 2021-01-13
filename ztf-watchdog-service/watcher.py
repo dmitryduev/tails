@@ -751,10 +751,11 @@ def watchdog(
 
     while True:
         try:
+            # monitor the past 24 hours as sometimes there are data processing/posting delays at IPAC
             start = (
                 arrow.get(utc_start)
                 if utc_start is not None
-                else arrow.utcnow().shift(hours=-1)
+                else arrow.utcnow().shift(hours=-24)
             )
             stop = (
                 arrow.get(utc_stop)
