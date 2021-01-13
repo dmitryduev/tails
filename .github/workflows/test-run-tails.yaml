@@ -13,9 +13,6 @@ jobs:
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
-#      - uses: actions/setup-python@v1
-#        with:
-#          python-version: '3.8'
       - name: Setup Miniconda
         uses: conda-incubator/setup-miniconda@v2.0.1
         with:
@@ -33,7 +30,7 @@ jobs:
         run: |
           mkdir models
           gsutil -m cp -r -n gs://tails-models/* models/
-      - name: Run inference on a publicly-available ZTF frame with 2I/Borisov
+      - name: Run inference on a publicly-available ZTF observation of 2I/Borisov
         shell: bash -l {0}
         run: |
           cd scripts
@@ -44,3 +41,4 @@ jobs:
             --cleanup=none \
             --single_image=ztf_20191014495961_000570_zr_c05_o_q3
           ls runs/20191014
+          python -c "from pathlib import Path; assert len(list(Path('./runs/20191014').glob('*.*'))) == 3"
