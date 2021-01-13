@@ -43,7 +43,7 @@ watchdog:
   dask:
     host: 127.0.0.1
     scheduler_port: 8786
-    n_workers: 4
+    n_workers: 2
     threads_per_worker: 1
     # see dask.distributed.Worker for the description
     lifetime:

@@ -27,12 +27,11 @@ WORKDIR /app
 
 # install service requirements, swarp, and tails; generate supervisord conf file
 RUN /opt/conda/bin/conda install -c conda-forge astromatic-swarp && \
+    ln -s /opt/conda/bin/swarp /bin/swarp && \
     /opt/conda/bin/pip install -U pip && \
     /opt/conda/bin/python setup.py install && \
     /opt/conda/bin/pip install -r requirements.txt --no-cache-dir && \
     /opt/conda/bin/python generate_supervisor_conf.py watcher
-
-RUN ln -s /opt/conda/bin/swarp /bin/swarp
 
 # run container
 #RUN touch /app/1.txt
