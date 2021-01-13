@@ -218,7 +218,7 @@ def test():
     num_retries = 10
     for i in range(num_retries):
         if i == num_retries - 1:
-            raise RuntimeError("Watchdog's containers failed to spin up")
+            raise RuntimeError("Sentinels's containers failed to spin up")
 
         command = ["docker", "ps", "-a"]
         container_list = (
@@ -244,7 +244,7 @@ def test():
         )
 
         if not all(containers_up):
-            print("Watchdog's containers are not up, waiting...")
+            print("Sentinel's containers are not up, waiting...")
             time.sleep(2)
             continue
 

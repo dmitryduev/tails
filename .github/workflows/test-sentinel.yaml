@@ -1,4 +1,4 @@
-name: test-watchdog
+name: test-sentinel
 
 on:
   push:
@@ -6,12 +6,9 @@ on:
   pull_request:
 
 jobs:
-  test-watchdog:
-    # The type of runner that the job will run on
+  test-sentinel:
     runs-on: ubuntu-latest
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v1
         with:
