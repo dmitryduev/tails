@@ -19,7 +19,7 @@ RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86
     apt-get clean
 
 # copy over the config and the code
-COPY ["config.yaml", "setup.py", "ztf-watchdog-service/", "ztf-watchdog-service/tests/", "/app/"]
+COPY ["config.yaml", "setup.py", "ztf-sentinel-service/", "ztf-sentinel-service/tests/", "/app/"]
 COPY ["tails", "/app/tails"]
 COPY ["models", "/app/models"]
 

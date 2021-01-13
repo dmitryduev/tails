@@ -48,19 +48,29 @@ python run_tails.py run \
 
 Check out the `runs/20191014` directory for the output.
 
-## ZTF watchdog service
+## ZTF sentinel service
+
+A containerized service that monitors
+[Kowalski](https://kowalski.caltech.edu)/[IRSA](https://irsa.ipac.caltech.edu/) for new ZTF data,
+executes Tails on them, and posts the identified candidates to [Fritz](https://fritz.science).
 
 Requires Kowalski and IRSA accounts, see the [config file](config.defaults.yaml).
-Additionally, a Fritz account is required is `post_to_fritz` is set to `true`.
+Additionally, a Fritz account is required if `sentinel.app.post_to_fritz` is set to `true`.
 
 Fetch models from GCP:
 
 ```bash
-./watchdog.py fetch-models
+./sentinel.py fetch-models
 ```
 
 Spin up:
 
 ```bash
-./watchdog.py run
+./sentinel.py up
+```
+
+Shut down:
+
+```bash
+./sentinel.py down
 ```

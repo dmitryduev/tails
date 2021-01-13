@@ -186,7 +186,7 @@ def build():
         check=True,
     )
     if p.returncode != 0:
-        raise RuntimeError("Failed to start watchdog")
+        raise RuntimeError("Failed to build the sentinel service")
 
 
 @app.command()
@@ -198,7 +198,7 @@ def up(build: bool = False):
         command.append("--build")
     p = subprocess.run(command, check=True)
     if p.returncode != 0:
-        raise RuntimeError("Failed to start service")
+        raise RuntimeError("Failed to start the sentinel service")
 
 
 @app.command()
@@ -240,7 +240,7 @@ def test():
                 ]
             )
             > 0
-            for container_name in ("tails_watchdog_1",)
+            for container_name in ("tails_sentinel_1",)
         )
 
         if not all(containers_up):
@@ -250,18 +250,18 @@ def test():
 
         break
 
-    print("Testing watchdog")
+    print("Testing sentinel")
 
     command = [
         "docker",
         "exec",
         "-i",
-        "tails_watchdog_1",
+        "tails_sentinel_1",
         "/opt/conda/bin/python",
         "-m",
         "pytest",
         "-s",
-        "test_watchdog.py",
+        "test_sentinel.py",
     ]
     try:
         subprocess.run(command, check=True)

@@ -2,32 +2,32 @@ import time
 import yaml
 
 from utilities import log, Mongo
-from watcher import watchdog
+from watcher import sentinel
 
 
 with open("/app/config.yaml") as config_yaml:
     config = yaml.load(config_yaml, Loader=yaml.FullLoader)
 
 
-class TestWatchdog:
-    def test_watchdog(self):
-        # execute watchdog on a single file, wait for it to be processed, then exit
-        watchdog(test=True)
+class TestSentinel:
+    def test_sentinel(self):
+        # execute sentinel on a single file, wait for it to be processed, then exit
+        sentinel(test=True)
 
         # check that processing succeeded
         frame_name = "ztf_20191014495961_000570_zr_c05_o_q3"
 
         mongo = Mongo(
-            host=config["watchdog"]["database"]["host"],
-            port=config["watchdog"]["database"]["port"],
-            username=config["watchdog"]["database"]["username"],
-            password=config["watchdog"]["database"]["password"],
-            db=config["watchdog"]["database"]["db"],
+            host=config["sentinel"]["database"]["host"],
+            port=config["sentinel"]["database"]["port"],
+            username=config["sentinel"]["database"]["username"],
+            password=config["sentinel"]["database"]["password"],
+            db=config["sentinel"]["database"]["db"],
             verbose=True,
         )
         log("MongoDB connection OK")
 
-        collection = config["watchdog"]["database"]["collection"]
+        collection = config["sentinel"]["database"]["collection"]
 
         num_retries = 10
         for i in range(num_retries):

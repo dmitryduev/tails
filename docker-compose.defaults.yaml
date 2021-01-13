@@ -9,11 +9,11 @@ networks:
 
 services:
 
-  watchdog:
+  sentinel:
     build:
       context: .
-      dockerfile: watchdog.Dockerfile
-    image: dmitryduev/tails_watchdog:latest
+      dockerfile: sentinel.Dockerfile
+    image: dmitryduev/tails_sentinel:latest
     volumes:
       - data:/data
     links:

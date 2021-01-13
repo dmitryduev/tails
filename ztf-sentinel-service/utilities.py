@@ -41,10 +41,10 @@ def init_db(config, verbose=False):
     Initialize db if necessary: create the sole non-admin user
     """
     client = pymongo.MongoClient(
-        host=config["watchdog"]["database"]["host"],
-        port=config["watchdog"]["database"]["port"],
-        username=config["watchdog"]["database"]["admin_username"],
-        password=config["watchdog"]["database"]["admin_password"],
+        host=config["sentinel"]["database"]["host"],
+        port=config["sentinel"]["database"]["port"],
+        username=config["sentinel"]["database"]["admin_username"],
+        password=config["sentinel"]["database"]["admin_password"],
     )
 
     # _id: db_name.user_name
@@ -52,16 +52,16 @@ def init_db(config, verbose=False):
     for _u in client.admin.system.users.find({}, {"_id": 1}):
         user_ids.append(_u["_id"])
 
-    db_name = config["watchdog"]["database"]["db"]
-    username = config["watchdog"]["database"]["username"]
+    db_name = config["sentinel"]["database"]["db"]
+    username = config["sentinel"]["database"]["username"]
 
     _mongo = client[db_name]
 
     if f"{db_name}.{username}" not in user_ids:
         _mongo.command(
             "createUser",
-            config["watchdog"]["database"]["username"],
-            pwd=config["watchdog"]["database"]["password"],
+            config["sentinel"]["database"]["username"],
+            pwd=config["sentinel"]["database"]["password"],
             roles=["readWrite"],
         )
         if verbose:

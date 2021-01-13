@@ -61,18 +61,18 @@ class TailsWorker:
 
         # mongo connection
         self.mongo = Mongo(
-            host=config["watchdog"]["database"]["host"],
-            port=config["watchdog"]["database"]["port"],
-            username=config["watchdog"]["database"]["username"],
-            password=config["watchdog"]["database"]["password"],
-            db=config["watchdog"]["database"]["db"],
+            host=config["sentinel"]["database"]["host"],
+            port=config["sentinel"]["database"]["port"],
+            username=config["sentinel"]["database"]["username"],
+            password=config["sentinel"]["database"]["password"],
+            db=config["sentinel"]["database"]["db"],
             verbose=self.verbose,
         )
 
         # session to talk to Fritz
         self.session = requests.Session()
         self.session_headers = {
-            "Authorization": f"token {config['watchdog']['fritz']['token']}"
+            "Authorization": f"token {config['sentinel']['fritz']['token']}"
         }
 
         retries = Retry(
@@ -102,25 +102,25 @@ class TailsWorker:
             log(e)
 
         # load Tails
-        self.path = pathlib.Path(config["watchdog"]["app"]["path"])
+        self.path = pathlib.Path(config["sentinel"]["app"]["path"])
 
-        self.checkpoint = f"/app/models/{config['watchdog']['app']['checkpoint']}/tails"
+        self.checkpoint = f"/app/models/{config['sentinel']['app']['checkpoint']}/tails"
 
         self.model = Tails()
         self.model.load_weights(self.checkpoint).expect_partial()
 
         self.score_threshold = float(
-            config["watchdog"]["app"].get("score_threshold", 0.5)
+            config["sentinel"]["app"].get("score_threshold", 0.5)
         )
         if not (0 <= self.score_threshold <= 1):
             raise ValueError(
-                "watchdog.app.score_threshold must be (0 <= score_threshold <=1), check config"
+                "sentinel.app.score_threshold must be (0 <= score_threshold <=1), check config"
             )
 
-        self.cleanup = config["watchdog"]["app"]["cleanup"]
+        self.cleanup = config["sentinel"]["app"]["cleanup"]
         if self.cleanup not in ("all", "none", "ref", "sci"):
             raise ValueError(
-                "watchdog.app.cleanup value not in ('all', 'none', 'ref', 'sci'), check config"
+                "sentinel.app.cleanup value not in ('all', 'none', 'ref', 'sci'), check config"
             )
 
         self.num_threads = mp.cpu_count()
@@ -150,16 +150,16 @@ class TailsWorker:
 
         if method == "get":
             response = methods[method](
-                f"{config['watchdog']['fritz']['protocol']}://"
-                f"{config['watchdog']['fritz']['host']}:{config['watchdog']['fritz']['port']}"
+                f"{config['sentinel']['fritz']['protocol']}://"
+                f"{config['sentinel']['fritz']['host']}:{config['sentinel']['fritz']['port']}"
                 f"{endpoint}",
                 params=data,
                 headers=self.session_headers,
             )
         else:
             response = methods[method](
-                f"{config['watchdog']['fritz']['protocol']}://"
-                f"{config['watchdog']['fritz']['host']}:{config['watchdog']['fritz']['port']}"
+                f"{config['sentinel']['fritz']['protocol']}://"
+                f"{config['sentinel']['fritz']['host']}:{config['sentinel']['fritz']['port']}"
                 f"{endpoint}",
                 json=data,
                 headers=self.session_headers,
@@ -179,7 +179,7 @@ class TailsWorker:
         detections = []
 
         try:
-            box_size_pix = config["watchdog"]["app"]["box_size_pix"]
+            box_size_pix = config["sentinel"]["app"]["box_size_pix"]
 
             dim_last = self.model.inputs[0].shape[-1]
 
@@ -355,7 +355,7 @@ class TailsWorker:
                     "ra": ra,
                     "dec": dec,
                     "radecstr": radecstr,
-                    "tails_v": self.config["watchdog"]["app"]["checkpoint"],
+                    "tails_v": self.config["sentinel"]["app"]["checkpoint"],
                     "sci_ipac_url": sci_ipac_url,
                     "dif_ipac_url": sci_ipac_url.replace(
                         "sciimg.fits", "scimrefdiffimg.fits.fz"
@@ -387,7 +387,7 @@ class TailsWorker:
             "ra": detection["ra"],
             "dec": detection["dec"],
             "score": detection["p"],
-            "filter_ids": [self.config["watchdog"]["fritz"]["filter_id"]],
+            "filter_ids": [self.config["sentinel"]["fritz"]["filter_id"]],
             "origin": candid,
             "passed_at": arrow.utcnow().format("YYYY-MM-DDTHH:mm:ss.SSS"),
         }
@@ -417,7 +417,7 @@ class TailsWorker:
             "ra": detection["ra"],
             "dec": detection["dec"],
             "radecstr": detection["radecstr"],
-            "tails_v": self.config["watchdog"]["app"]["checkpoint"],
+            "tails_v": self.config["sentinel"]["app"]["checkpoint"],
             "sci_ipac_url": detection["sci_ipac_url"],
             "dif_ipac_url": detection["dif_ipac_url"],
         }
@@ -446,7 +446,7 @@ class TailsWorker:
             "obj_id": oid,
             "origin": "tails:twilight",
             "data": data,
-            "group_ids": [self.config["watchdog"]["fritz"]["group_id"]],
+            "group_ids": [self.config["sentinel"]["fritz"]["group_id"]],
         }
 
         if self.verbose:
@@ -563,7 +563,7 @@ class TailsWorker:
         comment = {
             "obj_id": oid,
             "text": "Full-sized cutouts (256x256 px)",
-            "group_ids": [self.config["watchdog"]["fritz"]["group_id"]],
+            "group_ids": [self.config["sentinel"]["fritz"]["group_id"]],
             "attachment": {
                 "body": cutouts_png,
                 "name": f"{candid}.png",
@@ -597,7 +597,7 @@ class TailsWorker:
         comment = {
             "obj_id": oid,
             "text": "MPC and IMCCE cross-match",
-            "group_ids": [self.config["watchdog"]["fritz"]["group_id"]],
+            "group_ids": [self.config["sentinel"]["fritz"]["group_id"]],
             "attachment": {
                 "body": base64.b64encode(json.dumps(cross_matches).encode()).decode(
                     "utf-8"
@@ -617,7 +617,7 @@ class TailsWorker:
         comment = {
             "obj_id": oid,
             "text": f"[SCI image from IPAC]({detection['sci_ipac_url']})",
-            "group_ids": [self.config["watchdog"]["fritz"]["group_id"]],
+            "group_ids": [self.config["sentinel"]["fritz"]["group_id"]],
         }
 
         response = self.api_fritz("POST", "/api/comment", comment)
@@ -655,14 +655,14 @@ def process_frame(frame):
 
     log(f"Processing {frame} on {worker.address}")
 
-    collection = config["watchdog"]["database"]["collection"]
+    collection = config["sentinel"]["database"]["collection"]
 
     try:
         # process frame, tessellate, run Tails on individual tiles
         detections = tails_worker.process_frame(frame)
 
         # post results to Fritz, if any
-        if config["watchdog"]["app"]["post_to_fritz"]:
+        if config["sentinel"]["app"]["post_to_fritz"]:
             tails_worker.post_detections_to_fritz(detections)
         tails_worker.mongo.db[collection].update_one(
             {"_id": frame}, {"$set": {"status": "success"}}, upsert=True
@@ -674,7 +674,7 @@ def process_frame(frame):
         )
 
 
-def watchdog(
+def sentinel(
     utc_start: str = None,
     utc_stop: str = None,
     twilight: bool = False,
@@ -697,17 +697,17 @@ def watchdog(
     init_db(config=config, verbose=verbose)
 
     mongo = Mongo(
-        host=config["watchdog"]["database"]["host"],
-        port=config["watchdog"]["database"]["port"],
-        username=config["watchdog"]["database"]["username"],
-        password=config["watchdog"]["database"]["password"],
-        db=config["watchdog"]["database"]["db"],
+        host=config["sentinel"]["database"]["host"],
+        port=config["sentinel"]["database"]["port"],
+        username=config["sentinel"]["database"]["username"],
+        password=config["sentinel"]["database"]["password"],
+        db=config["sentinel"]["database"]["db"],
         verbose=verbose,
     )
     if verbose:
         log("Set up MongoDB connection")
 
-    collection = config["watchdog"]["database"]["collection"]
+    collection = config["sentinel"]["database"]["collection"]
 
     # remove dangling entries in the db at startup
     mongo.db[collection].delete_many({"status": "processing"})
@@ -716,7 +716,7 @@ def watchdog(
     if verbose:
         log("Initializing dask.distributed client")
     dask_client = dask.distributed.Client(
-        address=f"{config['watchdog']['dask']['host']}:{config['watchdog']['dask']['scheduler_port']}"
+        address=f"{config['sentinel']['dask']['host']}:{config['sentinel']['dask']['scheduler_port']}"
     )
 
     # init each worker with Worker instance
@@ -837,4 +837,4 @@ def watchdog(
 
 
 if __name__ == "__main__":
-    fire.Fire(watchdog)
+    fire.Fire(sentinel)

@@ -1,1 +1,1 @@
--r .requirements/watchdog.txt
+-r .requirements/sentinel.txt

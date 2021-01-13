@@ -4,13 +4,13 @@ import yaml
 
 
 def generate_conf(service):
-    if service not in config["watchdog"]["supervisord"].keys():
+    if service not in config["sentinel"]["supervisord"].keys():
         raise ValueError(f"{service} service def not found in config['supervisord']")
 
     sc = ""
-    for k in config["watchdog"]["supervisord"][service].keys():
+    for k in config["sentinel"]["supervisord"][service].keys():
         sc += f"[{k}]\n"
-        for kk, vv in config["watchdog"]["supervisord"][service][k].items():
+        for kk, vv in config["sentinel"]["supervisord"][service][k].items():
             sc += f"{kk} = {vv}\n"
 
     with open(f"/app/supervisord_{service}.conf", "w") as fsc:
