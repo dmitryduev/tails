@@ -8,7 +8,12 @@ Clone the repository:
 git clone https://github.com/dmitryduev/tails-pub.git tails && cd tails
 ```
 
-You may want to create a virtual environment before proceeding.
+Before proceeding, you may want to create/activate a virtual environment, for example:
+
+```bash
+python -m venv tails-env
+source tails-env/bin/activate
+```
 
 Install [`swarp`](https://www.astromatic.net/software/swarp). For example, with `conda`:
 
@@ -29,17 +34,19 @@ mkdir models
 gsutil -m cp -r -n gs://tails-models/* models/
 ```
 
-Run Tails on a ZTF frame:
+Run Tails on a (publicly accessible) ZTF frame:
 
 ```bash
 cd scripts
 python run_tails.py run \
   --config=../config.defaults.yaml \
-  --checkpoint=./models/tails-20210107/tails \
+  --checkpoint=../models/tails-20210107/tails \
   --score_threshold=0.5 \
   --cleanup=none \
   --single_image=ztf_20191014495961_000570_zr_c05_o_q3
 ```
+
+Check out the `runs/20191014` directory for the output.
 
 ## ZTF watchdog service
 
