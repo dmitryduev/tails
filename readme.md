@@ -34,7 +34,7 @@ mkdir models
 gsutil -m cp -r -n gs://tails-models/* models/
 ```
 
-Run Tails on a (publicly accessible) ZTF frame:
+Run Tails on a (publicly accessible) ZTF observation of 2I/Borisov:
 
 ```bash
 cd scripts

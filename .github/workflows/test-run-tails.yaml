@@ -6,7 +6,7 @@ on:
   pull_request:
 
 jobs:
-  test-watchdog:
+  test-run-tails:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
     # Steps represent a sequence of tasks that will be executed as part of the job
@@ -28,14 +28,19 @@ jobs:
           pip install wheel==0.36.0
           conda install -c conda-forge astromatic-swarp
           python setup.py install
-      - name: Set up configs
+      - name: Fetch models
+        shell: bash -l {0}
+        run: |
+          mkdir models
+          gsutil -m cp -r -n gs://tails-models/* models/
+      - name: Run inference on a publicly-available ZTF frame with 2I/Borisov
         shell: bash -l {0}
         run: |
           cd scripts
-          python run_tails.py run
-            --config=../config.defaults.yaml
-            --checkpoint=../models/tails-20210107/tails
-            --score_threshold=0.5
-            --cleanup=none
+          python run_tails.py run \
+            --config=../config.defaults.yaml \
+            --checkpoint=../models/tails-20210107/tails \
+            --score_threshold=0.5 \
+            --cleanup=none \
             --single_image=ztf_20191014495961_000570_zr_c05_o_q3
-          ls runs
+          ls runs/20191014
