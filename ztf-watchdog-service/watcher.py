@@ -735,8 +735,6 @@ def watchdog(
             dask.distributed.fire_and_forget(future)
             future.release()
             del future
-
-        time.sleep(60)
         return True
 
     if verbose:

@@ -24,7 +24,7 @@ jobs:
       - name: Set up configs
         run: |
           cp config.defaults.yaml config.yaml
-          cp docker-compose.defaults.yaml docker-compose.yaml
+          cp ztf-watchdog-service/tests/docker-compose.test.yaml docker-compose.yaml
       - name: Build and spin up
         run: |
           ./watchdog.py fetch-models
