@@ -176,7 +176,7 @@ class TailsWorker:
         if not path_date.exists():
             path_date.mkdir(parents=True, exist_ok=True)
 
-        detections = []
+        results = {"detections": [], "status": "success"}
 
         try:
             box_size_pix = config["sentinel"]["app"]["box_size_pix"]
@@ -364,10 +364,10 @@ class TailsWorker:
                     "x_match_mpc": x_match_mpc,
                     "x_match_skybot": x_match_skybot,
                 }
-                detections.append(detection)
+                results["detections"].append(detection)
 
-            if len(detections) > 0:
-                df_dets = pd.DataFrame.from_records(detections)
+            if len(results["detections"]) > 0:
+                df_dets = pd.DataFrame.from_records(results["detections"])
                 df_dets.to_csv(str(path_date / f"{frame}.csv"), index=False)
 
             if self.cleanup.lower() != "none":
@@ -377,8 +377,9 @@ class TailsWorker:
 
         except Exception as e:
             log(e)
+            results["status"] = "error"
 
-        return detections
+        return results
 
     def post_candidate(self, oid, detection):
         candid = f"{detection['id']}_{detection['ni']}"
@@ -659,14 +660,20 @@ def process_frame(frame):
 
     try:
         # process frame, tessellate, run Tails on individual tiles
-        detections = tails_worker.process_frame(frame)
+        results = tails_worker.process_frame(frame)
 
         # post results to Fritz, if any
-        if config["sentinel"]["app"]["post_to_fritz"]:
-            tails_worker.post_detections_to_fritz(detections)
-        tails_worker.mongo.db[collection].update_one(
-            {"_id": frame}, {"$set": {"status": "success"}}, upsert=True
-        )
+        if results["status"] == "success":
+            if config["sentinel"]["app"]["post_to_fritz"]:
+                tails_worker.post_detections_to_fritz(results["detections"])
+            tails_worker.mongo.db[collection].update_one(
+                {"_id": frame}, {"$set": {"status": "success"}}, upsert=True
+            )
+        else:
+            log(f"Processing of {frame} failed")
+            tails_worker.mongo.db[collection].update_one(
+                {"_id": frame}, {"$set": {"status": "error"}}, upsert=True
+            )
     except Exception as e:
         log(e)
         tails_worker.mongo.db[collection].update_one(
@@ -833,7 +840,7 @@ def sentinel(
             break
         else:
             log("Heartbeat")
-            time.sleep(30)
+            time.sleep(60)
 
 
 if __name__ == "__main__":
