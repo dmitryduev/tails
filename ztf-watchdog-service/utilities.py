@@ -41,10 +41,10 @@ def init_db(config, verbose=False):
     Initialize db if necessary: create the sole non-admin user
     """
     client = pymongo.MongoClient(
-        username=config["watchdog"]["database"]["admin_username"],
-        password=config["watchdog"]["database"]["admin_password"],
         host=config["watchdog"]["database"]["host"],
         port=config["watchdog"]["database"]["port"],
+        username=config["watchdog"]["database"]["admin_username"],
+        password=config["watchdog"]["database"]["admin_password"],
     )
 
     # _id: db_name.user_name
@@ -74,7 +74,7 @@ class Mongo(object):
     def __init__(
         self,
         host: str = "127.0.0.1",
-        port: str = "27017",
+        port: int = 27017,
         username: str = None,
         password: str = None,
         db: str = None,
@@ -86,7 +86,7 @@ class Mongo(object):
         self.username = username
         self.password = password
 
-        self.client = pymongo.MongoClient(host=self.host, port=self.port)
+        self.client = pymongo.MongoClient(host=self.host, port=int(self.port))
         self.db = self.client[db]
         # authenticate
         self.db.authenticate(self.username, self.password)

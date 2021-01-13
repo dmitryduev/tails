@@ -36,4 +36,4 @@ RUN touch /app/1.txt
 
 # run container
 #CMD tail -f 1.txt
-CMD /usr/local/bin/supervisord -n -c supervisord_watcher.conf
+CMD /opt/conda/bin/supervisord -n -c supervisord_watcher.conf

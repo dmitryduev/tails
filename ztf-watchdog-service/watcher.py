@@ -67,7 +67,8 @@ class TailsWorker:
             username=config["watchdog"]["database"]["username"],
             password=config["watchdog"]["database"]["password"],
             db=config["watchdog"]["database"]["db"],
-            verbose=self.verbose,
+            # verbose=self.verbose,
+            verbose=True,
         )
 
         # session to talk to Fritz
@@ -659,9 +660,6 @@ def process_frame(frame):
     collection = config["watchdog"]["database"]["collection"]
 
     try:
-        tails_worker.mongo.db[collection].update_one(
-            {"_id": frame}, {"$set": {"status": "processing"}}
-        )
         # process frame, tessellate, run Tails on individual tiles
         detections = tails_worker.process_frame(frame)
 
@@ -669,12 +667,12 @@ def process_frame(frame):
         if config["watchdog"]["app"]["post_to_fritz"]:
             tails_worker.post_detections_to_fritz(detections)
         tails_worker.mongo.db[collection].update_one(
-            {"_id": frame}, {"$set": {"status": "success"}}
+            {"_id": frame}, {"$set": {"status": "success"}}, upsert=True
         )
     except Exception as e:
         log(e)
         tails_worker.mongo.db[collection].update_one(
-            {"_id": frame}, {"$set": {"status": "error"}}
+            {"_id": frame}, {"$set": {"status": "error"}}, upsert=True
         )
 
 
@@ -706,7 +704,7 @@ def watchdog(
         username=config["watchdog"]["database"]["username"],
         password=config["watchdog"]["database"]["password"],
         db=config["watchdog"]["database"]["db"],
-        verbose=verbose,
+        verbose=True,
     )
     if verbose:
         log("Set up MongoDB connection")
@@ -732,6 +730,9 @@ def watchdog(
     if test:
         frame = "ztf_20191014495961_000570_zr_c05_o_q3"
         with timer(f"Submitting frame {frame} for processing", verbose):
+            mongo.db[collection].update_one(
+                {"_id": frame}, {"$set": {"status": "processing"}}, upsert=True
+            )
             future = dask_client.submit(process_frame, frame, pure=True)
             dask.distributed.fire_and_forget(future)
             future.release()
@@ -818,6 +819,9 @@ def watchdog(
 
             for frame in unprocessed_frames:
                 with timer(f"Submitting frame {frame} for processing", verbose):
+                    mongo.db[collection].update_one(
+                        {"_id": frame}, {"$set": {"status": "processing"}}, upsert=True
+                    )
                     future = dask_client.submit(process_frame, frame, pure=True)
                     dask.distributed.fire_and_forget(future)
                     future.release()

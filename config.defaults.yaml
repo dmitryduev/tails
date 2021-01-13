@@ -14,7 +14,7 @@ irsa:
 
 watchdog:
   app:
-    post_to_fritz: true
+    post_to_fritz: false
     checkpoint: tails-20210107
     score_threshold: 0.7
     box_size_pix: 256
