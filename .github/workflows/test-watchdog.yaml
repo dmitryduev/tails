@@ -1,4 +1,4 @@
-name: test
+name: test-watchdog
 
 on:
   push:
@@ -33,3 +33,5 @@ jobs:
       - name: Run tests
         run: |
           ./watchdog.py test
+          cat /data/logs/watcher.log
+          cat /data/logs/dask_cluster.log
