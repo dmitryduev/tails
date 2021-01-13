@@ -736,7 +736,7 @@ def watchdog(
             future.release()
             del future
 
-        time.sleep(60)
+        time.sleep(100)
         return True
 
     if verbose:

@@ -50,6 +50,9 @@ Check out the `runs/20191014` directory for the output.
 
 ## ZTF watchdog service
 
+Requires Kowalski and IRSA accounts, see the [config file](config.defaults.yaml).
+Additionally, a Fritz account is required is `post_to_fritz` is set to `true`.
+
 Fetch models from GCP:
 
 ```bash
