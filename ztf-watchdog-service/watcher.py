@@ -801,15 +801,16 @@ def watchdog(
                 log(f"Found {len(frame_names)} ccd-quad frames")
                 log(frame_names)
 
-            processed_frames = list(
-                mongo.db[collection].find(
+            processed_frames = [
+                frame["_id"]
+                for frame in mongo.db[collection].find(
                     {
                         "_id": {"$in": frame_names},
                         "status": {"$in": ["processing", "success"]},
                     },
                     {"_id": 1},
                 )
-            )
+            ]
             if verbose:
                 log(processed_frames)
 
