@@ -33,8 +33,3 @@ jobs:
       - name: Run tests
         run: |
           ./watchdog.py test
-          docker exec -i tails_watchdog_1 ls /data
-          docker exec -i tails_watchdog_1 ls /data/logs
-          docker exec -i tails_watchdog_1 ps -ef
-          docker exec -i tails_watchdog_1 cat /data/logs/watcher.log
-          docker exec -i tails_watchdog_1 cat /data/logs/dask_cluster.log

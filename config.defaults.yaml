@@ -18,7 +18,7 @@ watchdog:
     checkpoint: tails-20210107
     score_threshold: 0.7
     box_size_pix: 256
-    cleanup: sci  # <ref|sci|all|none>
+    cleanup: all  # <ref|sci|all|none>
     path: /data
 
   database:
