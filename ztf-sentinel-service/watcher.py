@@ -25,6 +25,7 @@ import requests
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
 import time
+from typing import Dict, List, Optional
 
 from tails.efficientdet import Tails
 from tails.image import Dvoika, Troika
@@ -178,7 +179,7 @@ class TailsWorker:
 
         return response
 
-    def process_frame(self, frame):
+    def process_frame(self, frame: str):
         """
         Process a ZTF observation
         - Fetch the epochal science, reference, and difference image for a ZTF observation
@@ -410,7 +411,7 @@ class TailsWorker:
 
         return results
 
-    def post_candidate(self, oid, detection):
+    def post_candidate(self, oid: str, detection: Dict):
         """
         Post a candidate comet detection to Fritz
 
@@ -442,7 +443,7 @@ class TailsWorker:
             log(f"Failed to post {oid} {candid} metadata to Fritz")
             log(response.json())
 
-    def post_annotations(self, oid, detection):
+    def post_annotations(self, oid: str, detection: Dict):
         """
         Post candidate annotations to Fritz
 
@@ -508,20 +509,19 @@ class TailsWorker:
             log(response.json())
 
     @staticmethod
-    def make_thumbnail(oid, detection, ttype: str, ztftype: str):
+    def make_thumbnail(oid: str, detection: Dict, thumbnail_type: str):
         """Convert lossless FITS cutouts from ZTF images into PNGs
 
         :param oid: Fritz obj id
         :param detection: Tails detection dict
-        :param ttype: <new|ref|sub>
-        :param ztftype: <Science|Template|Difference>
+        :param thumbnail_type: <new|ref|sub>
         :return:
         """
         stack = deepcopy(detection["cutouts"])
 
-        if ttype == "ref":
+        if thumbnail_type == "ref":
             index = 1
-        elif ttype == "sub":
+        elif thumbnail_type == "sub":
             index = 2
         else:
             index = 0
@@ -546,13 +546,6 @@ class TailsWorker:
             median = float(np.nanmean(img.flatten()))
             img = np.nan_to_num(img, nan=median)
 
-        # norm = ImageNormalize(
-        #     img, stretch=LinearStretch() if ztftype == "Difference" else LogStretch()
-        # )
-        # img_norm = norm(img)
-        # normalizer = AsymmetricPercentileInterval(lower_percentile=1, upper_percentile=100)
-        # vmin, vmax = normalizer.get_limits(img_norm)
-        # ax.imshow(img_norm, cmap="bone", origin="lower", vmin=vmin, vmax=vmax)
         interval = ZScaleInterval(nsamples=img.shape[0] * img.shape[1])
         limits = interval.get_limits(img)
         ax.imshow(img, origin="upper", cmap="bone", vmin=limits[0], vmax=limits[1])
@@ -564,50 +557,46 @@ class TailsWorker:
         thumb = {
             "obj_id": oid,
             "data": base64.b64encode(buff.read()).decode("utf-8"),
-            "ttype": ttype,
+            "ttype": thumbnail_type,
         }
 
         return thumb
 
-    def post_thumbnails(self, oid, detection):
+    def post_thumbnails(self, oid: str, detection: Dict):
         """
         Post Fritz-style (~1'x1') cutout images centered around the detected candidate to Fritz
 
-        :param oid:
-        :param detection:
+        :param oid: Fritz obj id
+        :param detection: Tails detection dict
         :return:
         """
         candid = f"{detection['id']}_{detection['ni']}"
 
-        for ttype, ztftype in [
-            ("new", "Science"),
-            ("ref", "Template"),
-            ("sub", "Difference"),
-        ]:
+        for thumbnail_type in ("new", "ref", "sub"):
             with timer(
-                f"Making {ztftype} thumbnail for {oid} {candid}",
+                f"Making {thumbnail_type} thumbnail for {oid} {candid}",
                 self.verbose > 1,
             ):
-                thumb = self.make_thumbnail(oid, detection, ttype, ztftype)
+                thumb = self.make_thumbnail(oid, detection, thumbnail_type)
 
             with timer(
-                f"Posting {ztftype} thumbnail for {oid} {candid} to Fritz",
+                f"Posting {thumbnail_type} thumbnail for {oid} {candid} to Fritz",
                 self.verbose > 1,
             ):
                 response = self.api_fritz("POST", "/api/thumbnail", thumb)
 
             if response.json()["status"] == "success":
-                log(f"Posted {oid} {candid} {ztftype} cutout to Fritz")
+                log(f"Posted {oid} {candid} {thumbnail_type} cutout to Fritz")
             else:
-                log(f"Failed to post {oid} {candid} {ztftype} cutout to Fritz")
+                log(f"Failed to post {oid} {candid} {thumbnail_type} cutout to Fritz")
                 log(response.json())
 
-    def post_comments(self, oid, detection):
+    def post_comments(self, oid: str, detection: Dict):
         """
         Post auxiliary candidate info to Fritz as comments to the respective object
 
-        :param oid:
-        :param detection:
+        :param oid: Fritz obj id
+        :param detection: Tails detection dict
         :return:
         """
         candid = f"{detection['id']}_{detection['ni']}"
@@ -686,11 +675,11 @@ class TailsWorker:
             log(f"Failed to post {oid} {candid} sci image url to Fritz")
             log(response.json())
 
-    def post_detections_to_fritz(self, detections):
+    def post_detections_to_fritz(self, detections: List[Dict]):
         """
         Post a list of detections from self.process_frame to Fritz
 
-        :param detections:
+        :param detections: results["detections"] from self.process_frame
         :return:
         """
         for detection in detections:
@@ -717,7 +706,7 @@ class WorkerInitializer(dask.distributed.WorkerPlugin):
         self.tails_worker = TailsWorker()
 
 
-def process_frame(frame):
+def process_frame(frame: str):
     """
     Function that is executed on dask.distributed.Worker's to process a ZTF observation
 
@@ -762,11 +751,11 @@ def process_frame(frame):
 
 
 def sentinel(
-    utc_start: str = None,
-    utc_stop: str = None,
-    twilight: bool = False,
-    test: bool = False,
-    verbose: bool = False,
+    utc_start: Optional[str] = None,
+    utc_stop: Optional[str] = None,
+    twilight: Optional[bool] = False,
+    test: Optional[bool] = False,
+    verbose: Optional[bool] = False,
 ):
     """
     ZTF Sentinel service
