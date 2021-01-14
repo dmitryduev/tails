@@ -40,6 +40,10 @@ DEFAULT_TIMEOUT = 5  # seconds
 
 
 class TimeoutHTTPAdapter(HTTPAdapter):
+    """
+    HTTPAdapter with built-in default timeouts
+    """
+
     def __init__(self, *args, **kwargs):
         self.timeout = DEFAULT_TIMEOUT
         if "timeout" in kwargs:
@@ -55,6 +59,13 @@ class TimeoutHTTPAdapter(HTTPAdapter):
 
 
 class TailsWorker:
+    """
+    Helper class that is instantiated on dask.distributed.Worker's used for processing
+
+    - Maintains MongoDB, MPC+IMCCE, and Fritz connections
+    - Pre-loads Tails (the model itself)
+    """
+
     def __init__(self, **kwargs):
         self.verbose = kwargs.get("verbose", 2)
         self.config = config
@@ -69,7 +80,7 @@ class TailsWorker:
             verbose=self.verbose,
         )
 
-        # session to talk to Fritz
+        # requests.Session to talk to Fritz
         self.session = requests.Session()
         self.session_headers = {
             "Authorization": f"token {config['sentinel']['fritz']['token']}"
@@ -85,7 +96,7 @@ class TailsWorker:
         self.session.mount("https://", adapter)
         self.session.mount("http://", adapter)
 
-        # init MPC and SkyBot
+        # init MPC and SkyBot - services used for cross-matching identified candidates with known Solar system objects
         self.mpc = MPC(verbose=self.verbose)
         self.imcce = IMCCE(verbose=self.verbose)
 
@@ -126,7 +137,7 @@ class TailsWorker:
         self.num_threads = mp.cpu_count()
 
     def api_fritz(self, method: str, endpoint: str, data=None):
-        """Make an API call to a SkyPortal instance
+        """Make an API call to a Fritz/SkyPortal instance
 
         :param method:
         :param endpoint:
@@ -168,6 +179,24 @@ class TailsWorker:
         return response
 
     def process_frame(self, frame):
+        """
+        Process a ZTF observation
+        - Fetch the epochal science, reference, and difference image for a ZTF observation
+        - Re-project the reference image onto the epochal science image
+        - Stack all three together
+        - Tessellate into a 13x13 grid of overlapping tiles of size 256x256 pix
+        - Execute Tails on each tile
+        - For each candidate detection, query MPC and IMCCE for cross-matches with known SS objects
+
+        :param frame: ZTF frame id formatted as in ztf_20201114547512_000319_zr_c01_o_q1, where
+                      20201114: date string
+                      547512: time tag
+                      000319: zero-padded field id
+                      zr: filter code <zg|zr|zi>
+                      c01: zero-padded CCD id c [1, 16]
+                      q1: quadrant id c [1, 4]
+        :return: detections (if any), packed into the result dict
+        """
         path_base = self.path.resolve()
 
         date_string = frame.split("_")[1][:8]
@@ -200,7 +229,7 @@ class TailsWorker:
                     verbose=self.verbose,
                 )
 
-            # reproject ref
+            # re-project ref
             with timer("Re-projecting", self.verbose > 1):
                 ref_projected = stack.reproject_ref2sci(
                     how="swarp", nthreads=self.num_threads
@@ -382,6 +411,13 @@ class TailsWorker:
         return results
 
     def post_candidate(self, oid, detection):
+        """
+        Post a candidate comet detection to Fritz
+
+        :param oid: candidate id
+        :param detection: from self.process_frame
+        :return:
+        """
         candid = f"{detection['id']}_{detection['ni']}"
         meta = {
             "id": oid,
@@ -407,6 +443,13 @@ class TailsWorker:
             log(response.json())
 
     def post_annotations(self, oid, detection):
+        """
+        Post candidate annotations to Fritz
+
+        :param oid: candidate id
+        :param detection: from self.process_frame
+        :return:
+        """
         candid = f"{detection['id']}_{detection['ni']}"
         data = {
             "candid": candid,
@@ -527,6 +570,13 @@ class TailsWorker:
         return thumb
 
     def post_thumbnails(self, oid, detection):
+        """
+        Post Fritz-style (~1'x1') cutout images centered around the detected candidate to Fritz
+
+        :param oid:
+        :param detection:
+        :return:
+        """
         candid = f"{detection['id']}_{detection['ni']}"
 
         for ttype, ztftype in [
@@ -553,8 +603,16 @@ class TailsWorker:
                 log(response.json())
 
     def post_comments(self, oid, detection):
+        """
+        Post auxiliary candidate info to Fritz as comments to the respective object
+
+        :param oid:
+        :param detection:
+        :return:
+        """
         candid = f"{detection['id']}_{detection['ni']}"
 
+        # post full-sized cutouts
         date_string = detection["id"].split("_")[1][:8]
         path_date = self.path / "runs" / date_string
 
@@ -578,7 +636,7 @@ class TailsWorker:
             log(f"Failed to post {oid} {candid} png to Fritz")
             log(response.json())
 
-        # post cross-matches
+        # post cross-matches from MPC and IMCCE
         cross_matches = {"MPC": None, "IMCCE": None}
         if (
             detection["x_match_mpc"]["status"] == "success"
@@ -614,7 +672,7 @@ class TailsWorker:
             log(f"Failed to post {oid} {candid} cross-matches to Fritz")
             log(response.json())
 
-        # post SCI image URL
+        # post SCI image URL on IPAC's IRSA
         comment = {
             "obj_id": oid,
             "text": f"[SCI image from IPAC]({detection['sci_ipac_url']})",
@@ -629,6 +687,12 @@ class TailsWorker:
             log(response.json())
 
     def post_detections_to_fritz(self, detections):
+        """
+        Post a list of detections from self.process_frame to Fritz
+
+        :param detections:
+        :return:
+        """
         for detection in detections:
             # generate unique object id
             utc = arrow.utcnow()
@@ -642,6 +706,10 @@ class TailsWorker:
 
 
 class WorkerInitializer(dask.distributed.WorkerPlugin):
+    """
+    Create an instance of TailsWorker when initializing dask.distributed.Worker's
+    """
+
     def __init__(self, *args, **kwargs):
         self.tails_worker = None
 
@@ -650,6 +718,18 @@ class WorkerInitializer(dask.distributed.WorkerPlugin):
 
 
 def process_frame(frame):
+    """
+    Function that is executed on dask.distributed.Worker's to process a ZTF observation
+
+    :param frame: ZTF frame id formatted as in ztf_20201114547512_000319_zr_c01_o_q1, where
+                      20201114: date string
+                      547512: time tag
+                      000319: zero-padded field id
+                      zr: filter code <zg|zr|zi>
+                      c01: zero-padded CCD id c [1, 16]
+                      q1: quadrant id c [1, 4]
+    :return:
+    """
     # get worker running current task
     worker = dask.distributed.get_worker()
     tails_worker = worker.plugins["worker-init"].tails_worker
@@ -689,6 +769,13 @@ def sentinel(
     verbose: bool = False,
 ):
     """
+    ZTF Sentinel service
+
+    - Monitors the ZTF_ops collection on Kowalski for new ZTF data (Twilight only by default).
+    - Uses dask.distributed to process individual ZTF image frames (ccd-quads).
+      Each worker is initialized with a TailsWorker instance that maintains a Fritz connection and preloads Tails.
+      The candidate comet detections, if any, are posted to Fritz together with auto-annotations
+      (cross-matches from the MPC and SkyBot) and auxiliary data.
 
     :param utc_start: UTC start date/time in arrow-parsable format. If not set, defaults to (now - 1h)
     :param utc_stop: UTC stop date/time in arrow-parsable format. If not set, defaults to (now + 1h).
