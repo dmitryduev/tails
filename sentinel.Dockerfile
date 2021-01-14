@@ -34,6 +34,4 @@ RUN /opt/conda/bin/conda install -c conda-forge astromatic-swarp && \
     /opt/conda/bin/python generate_supervisor_conf.py watcher
 
 # run container
-#RUN touch /app/1.txt
-#CMD tail -f 1.txt
 CMD /opt/conda/bin/supervisord -n -c supervisord_watcher.conf

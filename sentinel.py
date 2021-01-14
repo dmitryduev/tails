@@ -2,26 +2,17 @@
 from contextlib import contextmanager
 from deepdiff import DeepDiff
 from distutils.version import LooseVersion as Version
+import fire
 import pathlib
 from pprint import pprint
 import questionary
 import subprocess
 import sys
 import time
-import typer
-
-# from typing import Optional
 import yaml
 
 
-def output(cmd):
-    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    out, err = p.communicate()
-    success = p.returncode == 0
-    return success, out
-
-
-deps = {
+dependencies = {
     "python": (
         # Command to get version
         ["python", "--version"],
@@ -53,7 +44,8 @@ deps = {
 def status(message):
     """
     Borrowed from https://github.com/cesium-ml/baselayer/
-    :param message:
+
+    :param message: message to print
     :return:
     """
     print(f"[·] {message}", end="")
@@ -69,18 +61,23 @@ def status(message):
 
 def deps_ok():
     """
-    Borrowed from https://github.com/fritz-marshal/fritz
+    Check system dependencies
+
+    Borrowed from https://github.com/cesium-ml/baselayer/
     :return:
     """
     print("Checking system dependencies:")
 
     fail = []
 
-    for dep, (cmd, get_version, min_version) in deps.items():
+    for dep, (cmd, get_version, min_version) in dependencies.items():
         try:
             query = f"{dep} >= {min_version}"
             with status(query):
-                success, out = output(cmd)
+                p = subprocess.Popen(
+                    cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+                )
+                out, err = p.communicate()
                 try:
                     version = get_version(out.decode("utf-8").strip())
                     print(f"[{version.rjust(8)}]".rjust(40 - len(query)), end="")
@@ -89,13 +86,6 @@ def deps_ok():
 
                 if not (Version(version) >= Version(min_version)):
                     raise RuntimeError(f"Required {min_version}, found {version}")
-        except ValueError:
-            print(
-                f"\n[!] Sorry, but our script could not parse the output of "
-                f'`{" ".join(cmd)}`; please file a bug, or see '
-                f"`check_app_environment.py`\n"
-            )
-            raise
         except Exception as e:
             fail.append((dep, e))
 
@@ -106,7 +96,7 @@ def deps_ok():
         print("    The failed checks were:")
         print()
         for (pkg, exc) in fail:
-            cmd, get_version, min_version = deps[pkg]
+            cmd, get_version, min_version = dependencies[pkg]
             print(f'    - {pkg}: `{" ".join(cmd)}`')
             print("     ", exc)
         print()
@@ -122,9 +112,18 @@ def deps_ok():
 
 
 def check_configs(config_wildcards=("config.*yaml", "docker-compose.*yaml")):
+    """
+    - Check if config files exist
+    - Offer to use the config files that match the wildcards
+    - For config.yaml, check its contents against the defaults to make sure nothing is missing/wrong
+
+    :param config_wildcards:
+    :return:
+    """
     path = pathlib.Path(__file__).parent.absolute()
 
     for config_wildcard in config_wildcards:
+        # we are expecting to find config files with specific names, without wildcards:
         config = config_wildcard.replace("*", "")
         # use config defaults if configs do not exist?
         if not (path / config).exists():
@@ -153,120 +152,135 @@ def check_configs(config_wildcards=("config.*yaml", "docker-compose.*yaml")):
                 raise KeyError("Fix config.yaml before proceeding")
 
 
-app = typer.Typer()
+class Sentinel:
+    @staticmethod
+    def fetch_models():
+        """
+        Fetch Tails models from GCP
 
+        :return:
+        """
+        path_models = pathlib.Path(__file__).parent / "models"
+        if not path_models.exists():
+            path_models.mkdir(parents=True, exist_ok=True)
 
-@app.command()
-def fetch_models():
-    """Fetch Tails models from GCP"""
-    path_models = pathlib.Path(__file__).parent / "models"
-    if not path_models.exists():
-        path_models.mkdir(parents=True, exist_ok=True)
+        command = [
+            "gsutil",
+            "-m",
+            "cp",
+            "-n",
+            "-r",
+            "gs://tails-models/*",
+            str(path_models),
+        ]
+        p = subprocess.run(command, check=True)
+        if p.returncode != 0:
+            raise RuntimeError("Failed to fetch Tails models")
 
-    command = [
-        "gsutil",
-        "-m",
-        "cp",
-        "-r",
-        "gs://tails-models/*",
-        str(path_models),
-    ]
-    p = subprocess.run(command, check=True)
-    if p.returncode != 0:
-        raise RuntimeError("Failed to fetch Tails models")
+    @staticmethod
+    def build():
+        """
+        Build Sentinel's containers
 
+        :return:
+        """
+        check_configs()
 
-@app.command()
-def build():
-    """Build containers"""
-    check_configs()
-
-    p = subprocess.run(
-        ["docker-compose", "-f", "docker-compose.yaml", "build"],
-        check=True,
-    )
-    if p.returncode != 0:
-        raise RuntimeError("Failed to build the sentinel service")
-
-
-@app.command()
-def up(build: bool = False):
-    """Start service"""
-    # run service
-    command = ["docker-compose", "-f", "docker-compose.yaml", "up", "-d"]
-    if build:
-        command.append("--build")
-    p = subprocess.run(command, check=True)
-    if p.returncode != 0:
-        raise RuntimeError("Failed to start the sentinel service")
-
-
-@app.command()
-def down():
-    # shutdown service
-    print("Shutting down service")
-    command = ["docker-compose", "-f", "docker-compose.yaml", "down"]
-    subprocess.run(command)
-
-
-@app.command()
-def test():
-    """Test service"""
-    print("Running the test suite")
-
-    # make sure the containers are up and running
-    num_retries = 10
-    for i in range(num_retries):
-        if i == num_retries - 1:
-            raise RuntimeError("Sentinels's containers failed to spin up")
-
-        command = ["docker", "ps", "-a"]
-        container_list = (
-            subprocess.check_output(command, universal_newlines=True)
-            .strip()
-            .split("\n")
+        p = subprocess.run(
+            ["docker-compose", "-f", "docker-compose.yaml", "build"],
+            check=True,
         )
-        if len(container_list) == 1:
-            print("No containers are running, waiting...")
-            time.sleep(2)
-            continue
+        if p.returncode != 0:
+            raise RuntimeError("Failed to build the sentinel service")
 
-        containers_up = (
-            len(
-                [
-                    container
-                    for container in container_list
-                    if container_name in container and " Up " in container
-                ]
+    @classmethod
+    def up(cls, build: bool = False):
+        """
+        Start the Sentinel service
+
+        :param build: optionally, build it first
+        :return:
+        """
+        if build:
+            cls.build()
+        # run service
+        command = ["docker-compose", "-f", "docker-compose.yaml", "up", "-d"]
+
+        p = subprocess.run(command, check=True)
+        if p.returncode != 0:
+            raise RuntimeError("Failed to start the sentinel service")
+
+    @staticmethod
+    def down():
+        """
+        Shutdown the Sentinel service
+
+        :return:
+        """
+        print("Shutting down the Sentinel service")
+        command = ["docker-compose", "-f", "docker-compose.yaml", "down"]
+        subprocess.run(command)
+
+    @staticmethod
+    def test():
+        """
+        Test the Sentinel service
+
+        :return:
+        """
+        # make sure the containers are up and running
+        num_retries = 10
+        for i in range(num_retries):
+            if i == num_retries - 1:
+                raise RuntimeError("Sentinel's containers failed to spin up")
+
+            command = ["docker", "ps", "-a"]
+            container_list = (
+                subprocess.check_output(command, universal_newlines=True)
+                .strip()
+                .split("\n")
             )
-            > 0
-            for container_name in ("tails_sentinel_1",)
-        )
+            if len(container_list) == 1:
+                print("No containers are running, waiting...")
+                time.sleep(2)
+                continue
 
-        if not all(containers_up):
-            print("Sentinel's containers are not up, waiting...")
-            time.sleep(2)
-            continue
+            containers_up = (
+                len(
+                    [
+                        container
+                        for container in container_list
+                        if container_name in container and " Up " in container
+                    ]
+                )
+                > 0
+                for container_name in ("tails_sentinel_1",)
+            )
 
-        break
+            if not all(containers_up):
+                print("Sentinel's containers are not up, waiting...")
+                time.sleep(2)
+                continue
 
-    print("Testing sentinel")
+            break
 
-    command = [
-        "docker",
-        "exec",
-        "-i",
-        "tails_sentinel_1",
-        "/opt/conda/bin/python",
-        "-m",
-        "pytest",
-        "-s",
-        "test_sentinel.py",
-    ]
-    try:
-        subprocess.run(command, check=True)
-    except subprocess.CalledProcessError:
-        sys.exit(1)
+        print("Testing sentinel")
+
+        command = [
+            "docker",
+            "exec",
+            "-i",
+            "tails_sentinel_1",
+            "/opt/conda/bin/python",
+            "-m",
+            "pytest",
+            "-s",
+            "test_sentinel.py",
+        ]
+        try:
+            subprocess.run(command, check=True)
+        except subprocess.CalledProcessError:
+            sys.exit(1)
 
 
 if __name__ == "__main__":
@@ -275,4 +289,4 @@ if __name__ == "__main__":
     if not env_ok:
         raise RuntimeError("Halting because of unsatisfied system dependencies")
 
-    app()
+    fire.Fire(Sentinel)
