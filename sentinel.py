@@ -9,6 +9,7 @@ import questionary
 import subprocess
 import sys
 import time
+from typing import Sequence
 import yaml
 
 
@@ -59,7 +60,7 @@ def status(message):
         print(f"\r[✓] {message}")
 
 
-def deps_ok():
+def deps_ok() -> bool:
     """
     Check system dependencies
 
@@ -111,7 +112,9 @@ def deps_ok():
     return True
 
 
-def check_configs(config_wildcards=("config.*yaml", "docker-compose.*yaml")):
+def check_configs(
+    config_wildcards: Sequence = ("config.*yaml", "docker-compose.*yaml")
+):
     """
     - Check if config files exist
     - Offer to use the config files that match the wildcards
