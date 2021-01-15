@@ -25,7 +25,7 @@ import requests
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
 import time
-from typing import Dict, List, Optional
+from typing import Mapping, Optional, Sequence, Union
 
 from tails.efficientdet import Tails
 from tails.image import Dvoika, Troika
@@ -179,7 +179,7 @@ class TailsWorker:
 
         return response
 
-    def process_frame(self, frame: str):
+    def process_frame(self, frame: str) -> Mapping[str, Union[Sequence, str]]:
         """
         Process a ZTF observation
         - Fetch the epochal science, reference, and difference image for a ZTF observation
@@ -411,7 +411,7 @@ class TailsWorker:
 
         return results
 
-    def post_candidate(self, oid: str, detection: Dict):
+    def post_candidate(self, oid: str, detection: Mapping):
         """
         Post a candidate comet detection to Fritz
 
@@ -443,7 +443,7 @@ class TailsWorker:
             log(f"Failed to post {oid} {candid} metadata to Fritz")
             log(response.json())
 
-    def post_annotations(self, oid: str, detection: Dict):
+    def post_annotations(self, oid: str, detection: Mapping):
         """
         Post candidate annotations to Fritz
 
@@ -509,7 +509,7 @@ class TailsWorker:
             log(response.json())
 
     @staticmethod
-    def make_thumbnail(oid: str, detection: Dict, thumbnail_type: str):
+    def make_thumbnail(oid: str, detection: Mapping, thumbnail_type: str):
         """Convert lossless FITS cutouts from ZTF images into PNGs
 
         :param oid: Fritz obj id
@@ -562,7 +562,7 @@ class TailsWorker:
 
         return thumb
 
-    def post_thumbnails(self, oid: str, detection: Dict):
+    def post_thumbnails(self, oid: str, detection: Mapping):
         """
         Post Fritz-style (~1'x1') cutout images centered around the detected candidate to Fritz
 
@@ -591,7 +591,7 @@ class TailsWorker:
                 log(f"Failed to post {oid} {candid} {thumbnail_type} cutout to Fritz")
                 log(response.json())
 
-    def post_comments(self, oid: str, detection: Dict):
+    def post_comments(self, oid: str, detection: Mapping):
         """
         Post auxiliary candidate info to Fritz as comments to the respective object
 
@@ -675,7 +675,7 @@ class TailsWorker:
             log(f"Failed to post {oid} {candid} sci image url to Fritz")
             log(response.json())
 
-    def post_detections_to_fritz(self, detections: List[Dict]):
+    def post_detections_to_fritz(self, detections: Sequence[Mapping]):
         """
         Post a list of detections from self.process_frame to Fritz
 
