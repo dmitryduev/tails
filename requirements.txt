@@ -1,1 +1,2 @@
+-r .requirements/scripts.txt
 -r .requirements/sentinel.txt

@@ -25,6 +25,7 @@ jobs:
           pip install wheel==0.36.0
           conda install -c conda-forge astromatic-swarp
           python setup.py install
+          pip install -r requirements.txt
       - name: Fetch models
         shell: bash -l {0}
         run: |
@@ -33,12 +34,5 @@ jobs:
       - name: Run inference on a publicly-available ZTF observation of 2I/Borisov
         shell: bash -l {0}
         run: |
-          cd scripts
-          python run_tails.py run \
-            --config=../config.defaults.yaml \
-            --checkpoint=../models/tails-20210107/tails \
-            --score_threshold=0.5 \
-            --cleanup=none \
-            --single_image=ztf_20191014495961_000570_zr_c05_o_q3
-          ls runs/20191014
-          python -c "from pathlib import Path; assert len(list(Path('./runs/20191014').glob('*.*'))) == 3"
+          cd tests
+          python -m pytest -s test_run_tails.py
