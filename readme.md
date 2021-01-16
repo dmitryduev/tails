@@ -38,7 +38,7 @@ Run Tails on a (publicly accessible) ZTF observation of 2I/Borisov:
 
 ```bash
 cd scripts
-python run_tails.py run \
+python run_tails.py \
   --config=../config.defaults.yaml \
   --checkpoint=../models/tails-20210107/tails \
   --score_threshold=0.5 \
