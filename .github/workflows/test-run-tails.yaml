@@ -35,4 +35,5 @@ jobs:
         shell: bash -l {0}
         run: |
           cd tests
+          cp ../scripts/run_tails.py .
           python -m pytest -s test_run_tails.py
