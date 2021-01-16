@@ -52,7 +52,7 @@ Check out the `runs/20191014` directory for the output.
 
 A containerized service that monitors
 [Kowalski](https://kowalski.caltech.edu)/[IRSA](https://irsa.ipac.caltech.edu/) for new ZTF data,
-executes Tails on them, and posts the identified candidates to [Fritz](https://fritz.science).
+executes Tails on them, and optionally posts the identified candidates to [Fritz](https://fritz.science).
 
 Requires Kowalski and IRSA accounts, see the [config file](config.defaults.yaml).
 Additionally, a Fritz account is required if `sentinel.app.post_to_fritz` is set to `true`.
