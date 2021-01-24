@@ -17,7 +17,7 @@ Tails enabled the first AI-assisted discovery of a comet -
 Clone the repository:
 
 ```bash
-git clone https://github.com/dmitryduev/tails-pub.git tails && cd tails
+git clone https://github.com/dmitryduev/tails.git && cd tails
 ```
 
 Before proceeding, you may want to create/activate a virtual environment, for example:
