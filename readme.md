@@ -1,5 +1,17 @@
 # Tails: chasing comets with the Zwicky Transient Facility and Deep Learning
 
+Tails is a deep-learning framework for the identification and localization of comets in the image data
+of the [Zwicky Transient Facility (ZTF)](https://ztf.caltech.edu), a robotic optical sky survey
+at the [Palomar Observatory in California, USA](https://sites.astro.caltech.edu/palomar/about/).
+
+Tails uses a custom EfficientDet-based architecture and is thus capable of finding comets in single images
+in near real time, rather than requiring multiple epochs as with traditional methods.
+In production, we have observed 99% recall, <0.01% false positive rate,
+and 1-2 pixel root mean square error in the predicted position.
+
+Tails enabled the first AI-assisted discovery of a comet -
+[C/2020 T2](https://minorplanetcenter.net/mpec/K20/K20UH0.html).
+
 ## Install and run Tails
 
 Clone the repository:
@@ -46,7 +58,10 @@ python run_tails.py \
   --single_image=ztf_20191014495961_000570_zr_c05_o_q3
 ```
 
-Check out the `runs/20191014` directory for the output.
+Check out the `runs/20191014` directory for the output:
+- A csv file with the detection metadata
+- A 256x256 pix cutout image triplet (epochal, reference, and difference) containing the detection: an `.npy` file and a `.png` visualization:
+![ztf_20191014495961_000570_zr_c05_o_q3_0](https://user-images.githubusercontent.com/7557205/105624917-34802880-5dda-11eb-959e-8386142ac4a4.png)
 
 ## ZTF sentinel service
 
