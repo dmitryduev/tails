@@ -89,3 +89,36 @@ Shut down:
 ```bash
 ./sentinel.py down
 ```
+
+---
+
+The sentinel:
+- Managed with the `sentinel.py` utility.
+- Implemented as a containerized service, orchestrated with `docker-compose`.
+- Monitors the `ZTF_ops` collection on `Kowalski` for new ZTF data (Twilight only by default).
+- Uses `dask.distributed` to process individual ZTF image frames (ccd-quads).
+Each worker is initialized with a `TailsWorker` instance that maintains a `Fritz` connection and preloads Tails.
+The candidate comet detections, if any, are posted to `Fritz` together with auto-annotations
+(cross-matches from the MPC and SkyBot) and auxiliary data.
+
+
+On Fritz, the posted results look like the following:
+
+<table>
+<thead>
+<tr>
+<th>Candidates page</th>
+<th>Source page</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<img width="1605" alt="fritz-candidates" src="https://user-images.githubusercontent.com/7557205/104243874-2283aa80-5416-11eb-98e1-8f5cc5224d9e.png">
+</td>
+<td>
+<img width="1606" alt="fritz-source" src="https://user-images.githubusercontent.com/7557205/104243884-29122200-5416-11eb-9c76-3f727f22683b.png">
+</td>
+</tr>
+</tbody>
+</table>
