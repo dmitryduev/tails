@@ -2,7 +2,7 @@
 
 Tails is a deep-learning framework for the identification and localization of comets in the image data
 of the [Zwicky Transient Facility (ZTF)](https://ztf.caltech.edu), a robotic optical sky survey
-at the [Palomar Observatory in California, USA](https://sites.astro.caltech.edu/palomar/about/).
+at the [Palomar Observatory](https://sites.astro.caltech.edu/palomar/about/) in California, USA.
 
 Tails uses a custom EfficientDet-based architecture and is thus capable of finding comets in single images
 in near real time, rather than requiring multiple epochs as with traditional methods.
