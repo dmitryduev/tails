@@ -24,4 +24,4 @@ def generate_config():
 
 
 if __name__ == "__main__":
-    fire.Fire(generate_config())
+    fire.Fire(generate_config)

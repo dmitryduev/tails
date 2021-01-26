@@ -31,7 +31,7 @@ RUN /opt/conda/bin/conda install -c conda-forge astromatic-swarp && \
     /opt/conda/bin/pip install -U pip && \
     /opt/conda/bin/python setup.py install && \
     /opt/conda/bin/pip install -r requirements.txt --no-cache-dir && \
-    /opt/conda/bin/python generate_supervisor_conf.py watcher
+    /opt/conda/bin/python generate_supervisor_conf.py
 
 # run container
 CMD /opt/conda/bin/supervisord -n -c supervisord_watcher.conf
