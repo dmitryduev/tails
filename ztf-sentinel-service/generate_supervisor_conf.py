@@ -1,46 +1,27 @@
-import argparse
-import sys
+import configparser
+import fire
 import yaml
-
-
-def generate_conf(service):
-    if service not in config["sentinel"]["supervisord"].keys():
-        raise ValueError(f"{service} service def not found in config['supervisord']")
-
-    sc = ""
-    for k in config["sentinel"]["supervisord"][service].keys():
-        sc += f"[{k}]\n"
-        for kk, vv in config["sentinel"]["supervisord"][service][k].items():
-            sc += f"{kk} = {vv}\n"
-
-    with open(f"/app/supervisord_{service}.conf", "w") as fsc:
-        fsc.write(sc)
-
-
-def watcher(args):
-    generate_conf("watcher")
 
 
 with open("/app/config.yaml", "r") as f:
     config = yaml.load(f, Loader=yaml.FullLoader)
 
 
+def generate_config():
+    """
+    generate supervisord_<service>.conf files per service specified in config["sentinel"]["supervisord"]
+
+    :return:
+    """
+
+    supervisor_config_parser = configparser.ConfigParser()
+
+    for service in config["sentinel"]["supervisord"]:
+        supervisor_config_parser.read_dict(config["sentinel"]["supervisord"][service])
+
+        with open(f"/app/supervisord_{service}.conf", "w") as supervisor_config_file:
+            supervisor_config_parser.write(supervisor_config_file)
+
+
 if __name__ == "__main__":
-
-    parser = argparse.ArgumentParser()
-    subparsers = parser.add_subparsers(title="commands", dest="command")
-
-    commands = [
-        ("watcher", "generate supervisord_watcher.conf"),
-        ("help", "Print this message"),
-    ]
-
-    parsers = {}
-    for (cmd, desc) in commands:
-        parsers[cmd] = subparsers.add_parser(cmd, help=desc)
-
-    args = parser.parse_args()
-    if args.command is None or args.command == "help":
-        parser.print_help()
-    else:
-        getattr(sys.modules[__name__], args.command)(args)
+    fire.Fire(generate_config())
