@@ -92,7 +92,7 @@ Shut down:
 
 ---
 
-The sentinel:
+The Sentinel:
 - Managed with the `sentinel.py` utility.
 - Implemented as a containerized service, orchestrated with `docker-compose`.
 - Monitors the `ZTF_ops` collection on `Kowalski` for new ZTF data (Twilight only by default).
@@ -100,6 +100,10 @@ The sentinel:
 Each worker is initialized with a `TailsWorker` instance that maintains a `Fritz` connection and preloads Tails.
 The candidate comet detections, if any, are posted to `Fritz` together with auto-annotations
 (cross-matches from the MPC and SkyBot) and auxiliary data.
+  - By default, spins up a `dask.distributed.LocalCluster`, whose parameters are defined in `config.yaml`,
+  and a sentinel process, both managed with `supervisor` inside the `tails_sentinel_1` Docker container.
+  To use an external `dask.distributed` cluster, the user needs to simply provide its host and the scheduler port
+  and remove the `dask-cluster` `supervisor` program in the config.
 
 
 On Fritz, the posted results look like the following:
