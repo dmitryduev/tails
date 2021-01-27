@@ -1,0 +1,32 @@
+name: test-sentinel
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+
+jobs:
+  test-sentinel:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v1
+        with:
+          python-version: '3.8'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install wheel==0.36.0
+          pip install -r requirements.txt
+      - name: Set up configs
+        run: |
+          cp config.defaults.yaml config.yaml
+          cp ztf-sentinel-service/tests/docker-compose.test.yaml docker-compose.yaml
+      - name: Build and spin up
+        run: |
+          ./sentinel.py fetch-models
+          ./sentinel.py build
+          ./sentinel.py up
+      - name: Run tests
+        run: |
+          ./sentinel.py test

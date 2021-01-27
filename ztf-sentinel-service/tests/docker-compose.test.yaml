@@ -1,0 +1,43 @@
+version: "3.7"
+
+volumes:
+  mongodb:
+  data:
+
+networks:
+  tails:
+
+services:
+
+  sentinel:
+    build:
+      context: .
+      dockerfile: sentinel.Dockerfile
+    image: dmitryduev/tails_sentinel:latest
+    volumes:
+      - data:/data
+    links:
+      - mongo:tails-mongo
+    restart: always
+    depends_on:
+      - mongo
+    networks:
+      - tails
+    # only start the dask cluster when testing:
+    command: /opt/conda/bin/python dask_cluster.py
+
+  mongo:
+    image: mongo:latest
+    expose:
+      - "27017"
+    # fixme:
+    ports:
+      - "27037:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=mongoadmin
+      - MONGO_INITDB_ROOT_PASSWORD=mongoadminsecret
+    volumes:
+      - mongodb:/data/db
+    restart: always
+    networks:
+      - tails

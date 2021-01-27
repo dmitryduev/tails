@@ -2,11 +2,13 @@ __all__ = [
     "IMCCE",
     "leaky_relu",
     "load_config",
+    "log",
     "make_triplet",
     "MPC",
     "reticle",
     "plot_stack",
     "preprocess_stack",
+    "time_stamp",
     "query_horizons",
     "radec_str2deg",
     "relu",
@@ -55,6 +57,18 @@ def load_config(config_file="./config.yaml"):
         config = yaml.load(cyaml, Loader=yaml.FullLoader)
 
     return config
+
+
+def time_stamp():
+    """
+
+    :return: UTC time -> string
+    """
+    return datetime.datetime.utcnow().strftime("%Y%m%d_%H:%M:%S")
+
+
+def log(message):
+    print(f"{time_stamp()}: {message}")
 
 
 def relu(a):

@@ -279,7 +279,6 @@ class Dvoika(object):
                     f"ztf_{field}_{filt}_{ccd}_{quad}_refimg.fits",
                 )
                 if verbose:
-                    print("Danny's reference not available, fetching from IPAC")
                     print(path_ursa_ref)
                 r = requests.get(path_ursa_ref, allow_redirects=True, cookies=cookies)
                 if r.status_code != 200:
@@ -395,14 +394,11 @@ class Dvoika(object):
             keep_tmp = kwargs.get("keep_tmp", False)
 
             if not keep_tmp:
-                extension = f"_aligned_to_{self.path_sci.name[:-5]}.remap"
+                _, _, field, filt, ccd, _, quad = self.name.split("_")
 
-                fs = list(self.path_ref.parent.glob(extension))
-
-                fs += [
-                    str(self.path_ref).replace("fits", "resamp.fits"),
-                    str(self.path_ref).replace("fits", "resamp.weight.fits"),
-                ]
+                path_ref_base = pathlib.Path(os.path.join(self.path_base, "ref"))
+                path_ref = path_ref_base / pathlib.Path(f"{field}/{ccd}/{quad}/{filt}/")
+                fs = list(path_ref.glob(f"ref.{field}_{ccd}_{quad}_{filt}*remap*"))
 
                 if self.verbose:
                     print(fs)

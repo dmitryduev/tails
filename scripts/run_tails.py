@@ -1,26 +1,23 @@
 #!/usr/bin/env python
-
-import argparse
 from astropy.coordinates import SkyCoord
 from astropy.time import Time
 from copy import deepcopy
 import datetime
-import matplotlib.pyplot as plt
+import fire
 import multiprocessing as mp
 
-# from multiprocessing.pool import ThreadPool
 import numpy as np
 import os
 import pandas as pd
 import pathlib
 from penquins import Kowalski
-import sys
+from typing import Mapping, Optional, Sequence
 from tqdm.auto import tqdm
 import warnings
 
 from tails.efficientdet import Tails
 from tails.image import Dvoika, Troika
-from tails.utils import load_config, plot_stack, preprocess_stack
+from tails.utils import load_config, log, plot_stack, preprocess_stack
 
 os.environ[
     "LD_LIBRARY_PATH"
@@ -39,10 +36,16 @@ warnings.simplefilter("ignore")
 N_CPU = mp.cpu_count()
 
 
-def fetch_data(_nsp):
+def fetch_data(name_secrets_path: Sequence):
+    """Fetch data for a ZTF observation
+
+    :param name_secrets_path: stacked into Sequence to use with mp.pool.imap
+    :return:
+    """
     try:
-        name, secrets, p_base = _nsp
+        name, secrets, p_base = name_secrets_path
         path_base = (p_base / "data").resolve()
+        # Instantiating Troika will fetch all the relevant data: SCI, REF, and DIFF images from IPAC
         Troika(
             path_base=str(path_base),
             name=name,
@@ -51,26 +54,36 @@ def fetch_data(_nsp):
             fetch_data_only=True,
         )
     except Exception as e:
-        print(e)
-        pass
+        log(e)
 
 
 def process_ccd_quad(
-    name,
-    p_date,
-    checkpoint,
+    name: str,
+    p_date: pathlib.Path,
     model,
-    secrets,
+    checkpoint: str = "../models/tails-20210107/tails",
+    config: Mapping = None,
     nthreads: int = N_CPU,
-    score_threshold: float = 0.5,
-    cleanup="none",
-    **kwargs,
-):
+    score_threshold: float = 0.6,
+    cleanup: str = "none",
+) -> bool:
+    """Process a ZTF observation
+
+    :param name: ZTF observation id in format ztf_20200810193681_000635_zr_c09_o_q2
+    :param p_date: base output path
+    :param checkpoint: Pre-trained model weights
+    :param model: tf.keras.models.Model
+    :param config: config dict
+    :param nthreads: Number of threads for image re-projecting
+    :param score_threshold: score threshold for declaring a candidate plausible (0 <= score_threshold <= 1)
+    :param cleanup: Delete raw data: ref|sci|all|none
+
+    :return:
+    """
     # init Troika and fetch image data from IPAC or, if available, NERSC
     try:
-        box_size_pix = 256  # @param
+        box_size_pix = 256
 
-        # print(name)
         n_c = model.inputs[0].shape[-1]
 
         if n_c == 2:
@@ -84,7 +97,7 @@ def process_ccd_quad(
 
         path_base = pathlib.Path("./data").resolve()
         stack = stack_class(
-            path_base=str(path_base), name=name, secrets=secrets, verbose=False
+            path_base=str(path_base), name=name, secrets=config, verbose=False
         )
 
         # reproject ref
@@ -135,7 +148,6 @@ def process_ccd_quad(
         stacks = np.array([t["stack"] for t in tessellation])
 
         predictions = model.predict(stacks)
-        # print(predictions[0], predictions.shape)
 
         # detections
         dets = []
@@ -145,17 +157,13 @@ def process_ccd_quad(
             x_o, y_o = predictions[ii, 1:] * stacks.shape[1]
             # save png
             plot_stack(
-                # tessellation[ii]['stack'],
                 tessellation[ii]["stack_raw"],
                 reticles=((x_o, y_o),),
                 w=6,
                 h=2,
                 dpi=360,
                 save=str(p_date / f"{name}_{ni}.png"),
-                # cmap=cmr.arctic,
-                # cmap=plt.cm.viridis,
-                # cmap=plt.cm.cividis,
-                cmap=plt.cm.bone,
+                cmap="bone",
             )
             # save npy:
             np.save(str(p_date / f"{name}_{ni}.npy"), tessellation[ii]["stack"])
@@ -183,7 +191,6 @@ def process_ccd_quad(
             dets.append(det)
 
         if len(dets) > 0:
-            # print(dets)
             df_dets = pd.DataFrame.from_records(dets)
             df_dets.to_csv(str(p_date / f"{name}.csv"), index=False)
 
@@ -195,40 +202,58 @@ def process_ccd_quad(
         return True
 
     except Exception as e:
-        print(str(e))
+        log(str(e))
         return False
 
 
-def run(arguments):
-    p_base = pathlib.Path(arguments.output_base_path)
+def run(
+    cleanup: str = "none",
+    checkpoint: str = "../models/tails-20210107/tails",
+    config: str = "../config.yaml",
+    date: Optional[str] = None,
+    nthreads: int = N_CPU,
+    output_base_path: str = "./",
+    score_threshold: float = 0.6,
+    twilight: bool = False,
+    single_image: Optional[str] = None,
+):
+    """🚀 Run Tails on ZTF data
+    :param cleanup: Delete raw data: ref|sci|all|none
+    :param checkpoint: Pre-trained model weights
+    :param config: Path to yaml file with configs and secrets
+    :param date: UTC date string YYYYMMDD
+    :param nthreads: Number of threads for image re-projecting
+    :param output_base_path: Base path for output
+    :param score_threshold: score threshold for declaring a candidate plausible (0 <= score_threshold <= 1)
+    :param single_image: Run on single ccd-quad image, feed id in format ztf_20200810193681_000635_zr_c09_o_q2
+    :param twilight: Run on the Twilight survey data only
 
-    config = load_config(arguments.config)
+    :return:
+    """
+    p_base = pathlib.Path(output_base_path)
+
+    config = load_config(config)
 
     # build model and load weights
-    # checkpoint = 'checkpoints-loc/tails'
-    # checkpoint = 'checkpoints-loc-neg/tails'
-    # checkpoint = 'checkpoints-loc-neg-2/tails'
-    # checkpoint = 'checkpoints-loc-neg-3/tails'
-    # checkpoint = 'checkpoints-loc-l1-loss/tails'
-    checkpoint = arguments.checkpoint
+    checkpoint = checkpoint
 
     model = Tails()
     model.load_weights(checkpoint).expect_partial()
 
-    score_threshold = arguments.score_threshold
+    score_threshold = score_threshold
     if not (0 <= score_threshold <= 1):
         raise ValueError("score_threshold must be (0 <= score_threshold <=1)")
 
-    nthreads = arguments.nthreads
+    nthreads = nthreads
     if not (1 <= nthreads <= N_CPU):
         raise ValueError(f"nthreads must be (1 <= nthreads <={N_CPU})")
 
-    cleanup = arguments.cleanup
+    cleanup = cleanup.lower()
     if cleanup not in ("all", "none", "ref", "sci"):
         raise ValueError("cleanup value not in ('all', 'none', 'ref', 'sci')")
 
-    if arguments.single_image:
-        datestr = arguments.single_image[4:12]
+    if single_image:
+        datestr = single_image[4:12]
         date = datetime.datetime.strptime(datestr, "%Y%m%d")
         print(date)
 
@@ -236,11 +261,11 @@ def run(arguments):
         if not p_date.exists():
             p_date.mkdir(parents=True, exist_ok=True)
 
-        names = [arguments.single_image]
+        names = [single_image]
 
     else:
-        if arguments.date:
-            datestr = arguments.date
+        if date:
+            datestr = date
         else:
             datestr = datetime.datetime.utcnow().strftime("%Y%m%d")
 
@@ -252,10 +277,6 @@ def run(arguments):
             p_date.mkdir(parents=True, exist_ok=True)
 
         # setup
-
-        # from astroplan import download_IERS_A
-        # download_IERS_A()
-
         kowalski = Kowalski(
             username=config["kowalski"]["username"],
             password=config["kowalski"]["password"],
@@ -266,15 +287,13 @@ def run(arguments):
             "query": {
                 "catalog": "ZTF_ops",
                 "filter": {
-                    # 'qcomment': {'$regex': 'Twilight'},
-                    # 'field': 773,
                     "jd_start": {"$gt": Time(date).jd, "$lt": Time(date).jd + 1}
                 },
                 "projection": {"_id": 0, "fileroot": 1},
             },
         }
 
-        if arguments.twilight:
+        if twilight:
             q["query"]["filter"]["qcomment"] = {"$regex": "Twilight"}
 
         r = kowalski.query(q).get("data", dict())
@@ -291,20 +310,14 @@ def run(arguments):
     nsp = [(name, config, p_base) for name in names]
     with mp.Pool(processes=N_CPU) as pool:
         list(tqdm(pool.imap(fetch_data, nsp), total=len(nsp)))
-    # fixme:
-    # for nsp_i in tqdm(nsp[:3]):
-    # for nsp_i in tqdm(nsp):
-    #     fetch_data(nsp_i)
 
-    # fixme:
-    # for name in tqdm(names[:3]):
     for name in tqdm(names):
         process_ccd_quad(
             name=name,
             p_date=p_date,
             checkpoint=checkpoint,
             model=model,
-            secrets=config,
+            config=config,
             nthreads=nthreads,
             score_threshold=score_threshold,
             cleanup=cleanup,
@@ -312,61 +325,4 @@ def run(arguments):
 
 
 if __name__ == "__main__":
-
-    parser = argparse.ArgumentParser()
-    subparsers = parser.add_subparsers(title="commands", dest="command")
-
-    commands = [
-        ("run", "🚀 Run Tails, run!"),
-        ("help", "Print this message"),
-    ]
-
-    parsers = dict()
-    for (cmd, desc) in commands:
-        parsers[cmd] = subparsers.add_parser(cmd, help=desc)
-
-    parsers["run"].add_argument(
-        "--config",
-        type=str,
-        default="../config.yaml",
-        help="path to yaml file with configs and secrets",
-    )
-    parsers["run"].add_argument(
-        "--checkpoint",
-        type=str,
-        default="../nb/checkpoints-loc-l1-loss/tails",
-        help="model weights",
-    )
-    parsers["run"].add_argument(
-        "--score_threshold",
-        type=float,
-        default=0.6,
-        help="score threshold for declaring a candidate plausible (0 <= score_threshold <= 1)",
-    )
-    parsers["run"].add_argument("--date", type=str, help="UTC date string YYYYMMDD")
-    parsers["run"].add_argument(
-        "--twilight", action="store_true", help="Run on the Twilight survey data only"
-    )
-    parsers["run"].add_argument(
-        "--single_image",
-        type=str,
-        help="Run on single ccd-quad image, e.g. ztf_20200810193681_000635_zr_c09_o_q2",
-    )
-    parsers["run"].add_argument(
-        "--output_base_path", type=str, default="./", help="base path for output"
-    )
-    parsers["run"].add_argument(
-        "--nthreads",
-        type=int,
-        default=N_CPU,
-        help="number of threads for image re-projecting",
-    )
-    parsers["run"].add_argument(
-        "--cleanup", type=str, default="none", help="delete raw data: ref|sci|all|none"
-    )
-
-    args = parser.parse_args()
-    if args.command is None or args.command == "help":
-        parser.print_help()
-    else:
-        getattr(sys.modules[__name__], args.command)(args)
+    fire.Fire(run)

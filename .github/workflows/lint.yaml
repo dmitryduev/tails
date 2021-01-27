@@ -7,25 +7,16 @@ on:
 
 jobs:
   lint:
-    # The type of runner that the job will run on
     runs-on: ubuntu-latest
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v1
         with:
           python-version: '3.8'
-#      - uses: conda-incubator/setup-miniconda@v2
-#        with:
-#          auto-update-conda: true
-#          python-version: '3.8'
       - name: Set up pre-commit
         run: |
           pip install pre-commit
           pre-commit install
-#          conda install -c conda-forge astromatic-swarp
-#          python setup.py install
       - name: Lint sources
         run: |
           pre-commit run --all-files
