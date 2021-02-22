@@ -1,5 +1,5 @@
 astropy>=4.0.0
 fire>=0.3.1
 pandas>=1.0.4
-penquins>=1.1
+penquins>=2.1.0
 pytest>=5.3.1
