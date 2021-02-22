@@ -162,6 +162,7 @@ setup(
         "numpy==1.19.2",
         "pandas>=1.0.4",
         "penquins>=1.0.3",
+        "pyparsing>=2.4,<3",
         "pytest>=5.3.1",
         "pyyaml>=5.3",
         "reproject>=0.7",
