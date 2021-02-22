@@ -22,7 +22,7 @@ jobs:
         shell: bash -l {0}
         run: |
           python -m pip install --upgrade pip
-          pip install wheel==0.36.0
+          pip install "wheel>=0.36.0" "pyparsing>=2.4,<3"
           conda install -c conda-forge astromatic-swarp
           python setup.py install
           pip install -r requirements.txt
