@@ -223,7 +223,7 @@ def train_and_eval(
         patience=patience,
         monitor="val_position_rmse",
         restore_best_weights=True,
-        callbacks=("early_stopping", "tensorboard"),
+        callbacks=("early_stopping", "learning_rate_scheduler" "tensorboard"),
         tag=tag,
         logdir="logs",
     )
