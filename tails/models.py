@@ -133,6 +133,21 @@ class DNN(AbstractClassifier):
                 )
                 self.meta["callbacks"].append(early_stopping_callback)
 
+            elif callback == "reduce_lr_on_plateau":
+                tf.keras.callbacks.ReduceLROnPlateau(
+                    monitor="val_loss",
+                    factor=0.1,
+                    patience=10,
+                    verbose=0,
+                    mode="auto",
+                    min_delta=0.0001,
+                    cooldown=0,
+                    min_lr=0,
+                    **kwargs,
+                )
+
+                raise NotImplementedError("Implement ReduceLROnPlateau")
+
             elif callback == "learning_rate_scheduler":
                 learning_rate_decay_min_epoch = kwargs.get(
                     "learning_rate_decay_min_epoch", 30
