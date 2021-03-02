@@ -1,6 +1,7 @@
 # Tails: chasing comets with the Zwicky Transient Facility and Deep Learning
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4563226.svg)](https://doi.org/10.5281/zenodo.4563226)
+[![arXiv](https://img.shields.io/badge/arXiv-2102.13352-brightgreen)](https://arxiv.org/abs/2102.13352)
 
 Tails is a deep-learning framework for the identification and localization of comets in the image data
 of the [Zwicky Transient Facility (ZTF)](https://ztf.caltech.edu), a robotic optical sky survey
