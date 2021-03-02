@@ -147,11 +147,12 @@ def process_ccd_quad(
 
         stacks = np.array([t["stack"] for t in tessellation])
 
-        predictions = model.predict(stacks)
+        predictions = model.predict(
+            stacks,
+        )
 
         # detections
         dets = []
-        score_threshold = score_threshold
         ind = np.where(predictions[:, 0].flatten() > score_threshold)[0]
         for ni, ii in enumerate(ind):
             x_o, y_o = predictions[ii, 1:] * stacks.shape[1]
@@ -235,16 +236,12 @@ def run(
     config = load_config(config)
 
     # build model and load weights
-    checkpoint = checkpoint
-
     model = Tails()
     model.load_weights(checkpoint).expect_partial()
 
-    score_threshold = score_threshold
     if not (0 <= score_threshold <= 1):
         raise ValueError("score_threshold must be (0 <= score_threshold <=1)")
 
-    nthreads = nthreads
     if not (1 <= nthreads <= N_CPU):
         raise ValueError(f"nthreads must be (1 <= nthreads <={N_CPU})")
 

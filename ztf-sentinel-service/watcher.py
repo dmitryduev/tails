@@ -285,7 +285,9 @@ class TailsWorker:
             stacks = np.array([t["stack"] for t in tessellation])
 
             with timer("Running Tails", self.verbose > 1):
-                predictions = self.model.predict(stacks)
+                predictions = self.model.predict(
+                    stacks,
+                )
             # log(predictions[0], predictions.shape)
 
             # URL to fetch original images from IPAC

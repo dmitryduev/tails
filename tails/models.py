@@ -628,6 +628,7 @@ class DNN(AbstractClassifier):
         epochs=300,
         class_weight=None,
         verbose=False,
+        **kwargs,
     ):
 
         if not class_weight:
@@ -645,15 +646,16 @@ class DNN(AbstractClassifier):
             verbose=verbose,
         )
 
-    def evaluate(self, test_dataset):
+    def evaluate(self, test_dataset, **kwargs):
         return self.model.evaluate(test_dataset)
 
-    def predict(self, x):
+    def predict(self, x, **kwargs):
         return self.model.predict(x)
 
-    def save(self, output_path="./", output_format="hdf5", tag=None):
+    def save(self, output_path="./", output_format="hdf5", tag=None, **kwargs):
 
-        assert output_format in ("SavedModel", "hdf5"), "unknown output format"
+        if output_format not in ("SavedModel", "hdf5"):
+            raise ValueError(f"Unknown output format {output_format}")
 
         output_name = self.name if not tag else f"{self.name}.{tag}"
 
