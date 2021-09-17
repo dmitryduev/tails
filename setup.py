@@ -159,7 +159,7 @@ setup(
         "efficientnet>=1.1.0",
         "gsutil>=4.57",
         "matplotlib>=3.1.3",
-        "numpy>=1.19.2",
+        "numpy==1.19.2",
         "pandas>=1.0.4",
         "penquins>=2.1.0",
         "pyparsing>=2.4,<3",
