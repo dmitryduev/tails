@@ -29,6 +29,7 @@ WORKDIR /app
 RUN /opt/conda/bin/conda install -c conda-forge astromatic-swarp && \
     ln -s /opt/conda/bin/swarp /bin/swarp && \
     /opt/conda/bin/pip install -U pip && \
+    /opt/conda/bin/pip install numpy==1.19.2 && \
     /opt/conda/bin/pip install tensorflow==2.5.1 && \
     /opt/conda/bin/python setup.py install && \
     /opt/conda/bin/pip install -r requirements.txt --no-cache-dir && \
