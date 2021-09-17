@@ -29,7 +29,7 @@ WORKDIR /app
 RUN /opt/conda/bin/conda install -c conda-forge astromatic-swarp && \
     ln -s /opt/conda/bin/swarp /bin/swarp && \
     /opt/conda/bin/pip install -U pip && \
-    /opt/conda/bin/pip install twnsorflow==2.4.3 && \
+    /opt/conda/bin/pip install tensorflow==2.4.3 && \
     /opt/conda/bin/python setup.py install && \
     /opt/conda/bin/pip install -r requirements.txt --no-cache-dir && \
     /opt/conda/bin/python generate_supervisor_conf.py
