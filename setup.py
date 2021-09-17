@@ -168,7 +168,7 @@ setup(
         "reproject>=0.7",
         "requests>=2.23.0",
         "requests_html>=0.10.0",
-        "tensorflow<2.5",
+        "tensorflow==2.4.3",
         "tqdm>=4.46.0",
     ],
     author=AUTHOR,
