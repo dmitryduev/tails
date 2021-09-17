@@ -6,7 +6,7 @@ RUN apt-get update && apt-get install -y wget git gcc
 RUN mkdir -p /app /app/tails /app/models /data /data/logs /_tmp
 
 # install miniconda
-RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh && \
+RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-py38_4.9.2-Linux-x86_64.sh -O miniconda.sh && \
     mkdir -p /opt && \
     sh miniconda.sh -b -p /opt/conda && \
     rm miniconda.sh && \
@@ -28,7 +28,7 @@ WORKDIR /app
 # install service requirements, swarp, and tails; generate supervisord conf file
 RUN /opt/conda/bin/conda install -c conda-forge astromatic-swarp && \
     ln -s /opt/conda/bin/swarp /bin/swarp && \
-    /opt/conda/bin/pip install -U pip && \
+    /opt/conda/bin/pip install -U pip cython && \
     /opt/conda/bin/python setup.py install && \
     /opt/conda/bin/pip install -r requirements.txt --no-cache-dir && \
     /opt/conda/bin/python generate_supervisor_conf.py
