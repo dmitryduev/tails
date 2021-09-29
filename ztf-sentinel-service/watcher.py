@@ -500,10 +500,12 @@ class TailsWorker:
             log(annotations)
 
         with timer(
-            f"Posting annotation for {oid} {candid} to Fritz",
+            f"Posting annotations for {oid} {candid} to Fritz",
             self.verbose > 1,
         ):
-            response = self.api_fritz("POST", "/api/annotation", annotations)
+            response = self.api_fritz(
+                "POST", f"/api/sources/{oid}/annotations", annotations
+            )
         if response.json()["status"] == "success":
             log(f"Posted {oid} {candid} annotation to Fritz")
         else:
@@ -620,7 +622,7 @@ class TailsWorker:
             },
         }
 
-        response = self.api_fritz("POST", "/api/comment", comment)
+        response = self.api_fritz("POST", f"/api/sources/{oid}/comments", comment)
         if response.json()["status"] == "success":
             log(f"Posted {oid} {candid} png to Fritz")
         else:
@@ -656,7 +658,7 @@ class TailsWorker:
             },
         }
 
-        response = self.api_fritz("POST", "/api/comment", comment)
+        response = self.api_fritz("POST", f"/api/sources/{oid}/comments", comment)
         if response.json()["status"] == "success":
             log(f"Posted {oid} {candid} cross-matches to Fritz")
         else:
@@ -670,7 +672,7 @@ class TailsWorker:
             "group_ids": [self.config["sentinel"]["fritz"]["group_id"]],
         }
 
-        response = self.api_fritz("POST", "/api/comment", comment)
+        response = self.api_fritz("POST", f"/api/sources/{oid}/comments", comment)
         if response.json()["status"] == "success":
             log(f"Posted {oid} {candid} sci image url to Fritz")
         else:
