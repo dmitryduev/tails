@@ -490,7 +490,6 @@ class TailsWorker:
             data["imcce_nearest_Vmag"] = float(nearest_match["V"].value)
 
         annotations = {
-            "obj_id": oid,
             "origin": "tails:twilight",
             "data": data,
             "group_ids": [self.config["sentinel"]["fritz"]["group_id"]],
@@ -613,7 +612,6 @@ class TailsWorker:
             file_content = f.read()
         cutouts_png = base64.b64encode(file_content).decode("utf-8")
         comment = {
-            "obj_id": oid,
             "text": "Full-sized cutouts (256x256 px)",
             "group_ids": [self.config["sentinel"]["fritz"]["group_id"]],
             "attachment": {
@@ -647,7 +645,6 @@ class TailsWorker:
                 .to_dict(orient="records")
             )
         comment = {
-            "obj_id": oid,
             "text": "MPC and IMCCE cross-match",
             "group_ids": [self.config["sentinel"]["fritz"]["group_id"]],
             "attachment": {
@@ -667,7 +664,6 @@ class TailsWorker:
 
         # post SCI image URL on IPAC's IRSA
         comment = {
-            "obj_id": oid,
             "text": f"[SCI image from IPAC]({detection['sci_ipac_url']})",
             "group_ids": [self.config["sentinel"]["fritz"]["group_id"]],
         }
