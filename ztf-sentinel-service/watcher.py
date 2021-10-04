@@ -490,7 +490,6 @@ class TailsWorker:
             data["imcce_nearest_Vmag"] = float(nearest_match["V"].value)
 
         annotations = {
-            "obj_id": oid,
             "origin": "tails:twilight",
             "data": data,
             "group_ids": [self.config["sentinel"]["fritz"]["group_id"]],
@@ -500,10 +499,12 @@ class TailsWorker:
             log(annotations)
 
         with timer(
-            f"Posting annotation for {oid} {candid} to Fritz",
+            f"Posting annotations for {oid} {candid} to Fritz",
             self.verbose > 1,
         ):
-            response = self.api_fritz("POST", "/api/annotation", annotations)
+            response = self.api_fritz(
+                "POST", f"/api/sources/{oid}/annotations", annotations
+            )
         if response.json()["status"] == "success":
             log(f"Posted {oid} {candid} annotation to Fritz")
         else:
@@ -611,7 +612,6 @@ class TailsWorker:
             file_content = f.read()
         cutouts_png = base64.b64encode(file_content).decode("utf-8")
         comment = {
-            "obj_id": oid,
             "text": "Full-sized cutouts (256x256 px)",
             "group_ids": [self.config["sentinel"]["fritz"]["group_id"]],
             "attachment": {
@@ -620,7 +620,7 @@ class TailsWorker:
             },
         }
 
-        response = self.api_fritz("POST", "/api/comment", comment)
+        response = self.api_fritz("POST", f"/api/sources/{oid}/comments", comment)
         if response.json()["status"] == "success":
             log(f"Posted {oid} {candid} png to Fritz")
         else:
@@ -645,7 +645,6 @@ class TailsWorker:
                 .to_dict(orient="records")
             )
         comment = {
-            "obj_id": oid,
             "text": "MPC and IMCCE cross-match",
             "group_ids": [self.config["sentinel"]["fritz"]["group_id"]],
             "attachment": {
@@ -656,7 +655,7 @@ class TailsWorker:
             },
         }
 
-        response = self.api_fritz("POST", "/api/comment", comment)
+        response = self.api_fritz("POST", f"/api/sources/{oid}/comments", comment)
         if response.json()["status"] == "success":
             log(f"Posted {oid} {candid} cross-matches to Fritz")
         else:
@@ -665,12 +664,11 @@ class TailsWorker:
 
         # post SCI image URL on IPAC's IRSA
         comment = {
-            "obj_id": oid,
             "text": f"[SCI image from IPAC]({detection['sci_ipac_url']})",
             "group_ids": [self.config["sentinel"]["fritz"]["group_id"]],
         }
 
-        response = self.api_fritz("POST", "/api/comment", comment)
+        response = self.api_fritz("POST", f"/api/sources/{oid}/comments", comment)
         if response.json()["status"] == "success":
             log(f"Posted {oid} {candid} sci image url to Fritz")
         else:
