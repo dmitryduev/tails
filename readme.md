@@ -12,8 +12,13 @@ in near real time, rather than requiring multiple epochs as with traditional met
 In production, we have observed 99% recall, <0.01% false positive rate,
 and 1-2 pixel root mean square error in the predicted position.
 
-Tails enabled the first AI-assisted discovery of a comet -
+Tails enabled the **first AI-assisted discovery of a comet** -
 [C/2020 T2](https://minorplanetcenter.net/mpec/K20/K20UH0.html).
+
+### Comet discoveries by Tails
+- [C/2020 T2](https://minorplanetcenter.net/mpec/K20/K20UH0.html)
+- [C/2022 P2](http://www.cbat.eps.harvard.edu/iau/cbet/005100/CBET005165.txt)
+- [C/2022 P3](http://www.cbat.eps.harvard.edu/iau/cbet/005100/CBET005169.txt)
 
 ## Install and run Tails
 
