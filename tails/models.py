@@ -50,7 +50,7 @@ class DNN(AbstractClassifier):
         architecture="efficientnetb0",
         loss="binary_crossentropy",
         optimizer="adam",
-        callbacks=("early_stopping", "tensorboard"),
+        callbacks=("early_stopping", "learning_rate_scheduler", "tensorboard"),
         tag=None,
         logdir="logs",
         **kwargs,
@@ -132,6 +132,40 @@ class DNN(AbstractClassifier):
                     restore_best_weights=restore_best_weights,
                 )
                 self.meta["callbacks"].append(early_stopping_callback)
+
+            elif callback == "reduce_lr_on_plateau":
+                tf.keras.callbacks.ReduceLROnPlateau(
+                    monitor="val_loss",
+                    factor=0.1,
+                    patience=10,
+                    verbose=0,
+                    mode="auto",
+                    min_delta=0.0001,
+                    cooldown=0,
+                    min_lr=0,
+                    **kwargs,
+                )
+
+                raise NotImplementedError("Implement ReduceLROnPlateau")
+
+            elif callback == "learning_rate_scheduler":
+                learning_rate_decay_min_epoch = kwargs.get(
+                    "learning_rate_decay_min_epoch", 30
+                )
+                learning_rate_decay_index = kwargs.get(
+                    "learning_rate_decay_index", -0.1
+                )
+
+                def scheduler(epoch, lr):
+                    if epoch < learning_rate_decay_min_epoch:
+                        return lr
+                    else:
+                        return lr * tf.math.exp(learning_rate_decay_index)
+
+                learning_rate_scheduler_callback = (
+                    tf.keras.callbacks.LearningRateScheduler(scheduler)
+                )
+                self.meta["callbacks"].append(learning_rate_scheduler_callback)
 
             elif callback == "tensorboard":
                 # logs for TensorBoard:
